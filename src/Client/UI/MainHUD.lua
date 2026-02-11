@@ -116,7 +116,16 @@ local function SetupUI()
 	_PatchNotesButton = bottomRight.PatchNotesButton
 	_PickMapButton = bottomRight.PickMapButton
 
+	local topRight = _ScreenGui.TopRightFrame
+
 	-- Hook up menu button clicks
+
+	-- Top right buttons
+	topRight.RankButton.MouseButton1Click:Connect(function()
+		DebugLog("Rank clicked")
+		local UIController = shared("UIController")
+		UIController:ToggleWindow("RankWindow")
+	end)
 	buttonGrid.PenguinButton.MouseButton1Click:Connect(function()
 		DebugLog("Penguin clicked")
 		local UIController = shared("UIController")

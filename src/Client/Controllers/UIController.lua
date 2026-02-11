@@ -216,6 +216,7 @@ function UIController:Init()
 	-- Pre-setup known windows
 	SetupWindow("SkinsWindow")
 	SetupWindow("IndexWindow")
+	SetupWindow("RankWindow")
 end
 
 -- Return Module --

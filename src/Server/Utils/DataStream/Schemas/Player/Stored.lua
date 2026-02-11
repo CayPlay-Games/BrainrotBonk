@@ -3,22 +3,8 @@ return {
 
 	Collections = {
 		Currencies = {
-			StepShards = 0,
-			Momentum = 0,
-			Coins = 0, -- Currency for rank rewards
+			Coins = 0,
 		},
-	},
-
-	Stats = {
-		CurrenciesGained = {
-			StepShards = 0,
-			Momentum = 0,
-		},
-		TotalStepsTaken = 0,
-		TotalDistanceTraveled = 0,
-		HighestCheckpointReached = 0,
-		TotalRunsCompleted = 0,
-		TotalCashouts = 0,
 	},
 
 	Upgrades = {

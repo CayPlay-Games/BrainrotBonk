@@ -8,7 +8,47 @@
 
 local TableHelper = shared("TableHelper")
 
+-- Tier gradients for rank cards (ColorSequence for UIGradient)
+local TierGradients = {
+	Bronze = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(139, 90, 43)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(205, 127, 50)),
+	}),
+	Silver = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 120, 130)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(192, 192, 200)),
+	}),
+	Gold = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 130, 0)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 215, 0)),
+	}),
+	Platinum = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 120, 140)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 200, 220)),
+	}),
+	Emerald = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 100, 60)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 200, 120)),
+	}),
+	Diamond = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 150, 200)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 230, 255)),
+	}),
+	Master = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 50, 120)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 100, 220)),
+	}),
+	Grandmaster = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 50, 50)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 150, 50)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 50, 50)),
+	}),
+}
+
 return TableHelper:DeepFreeze({
+	-- Tier gradients for rank card backgrounds
+	TierGradients = TierGradients,
+
 	-- XP awarded for game actions
 	XPRewards = {
 		PlayGame = 50, -- Completing a round

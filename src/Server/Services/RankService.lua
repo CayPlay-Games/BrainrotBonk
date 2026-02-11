@@ -13,6 +13,7 @@ local RankService = {}
 
 -- Dependencies --
 local RankConfig = shared("RankConfig")
+local RankHelper = shared("RankHelper")
 local DataStream = shared("DataStream")
 local RoundConfig = shared("RoundConfig")
 
@@ -24,19 +25,6 @@ local function DebugLog(...)
 	if RoundConfig.DEBUG_LOG_STATE_CHANGES then
 		print("[RankService]", ...)
 	end
-end
-
--- Calculate rank index from XP (0 = unranked)
-local function CalculateRankFromXP(xp)
-	local rankIndex = 0
-	for i, rank in ipairs(RankConfig.Ranks) do
-		if xp >= rank.XPRequired then
-			rankIndex = i
-		else
-			break
-		end
-	end
-	return rankIndex
 end
 
 -- Give a single reward to a player
@@ -121,7 +109,7 @@ function RankService:AwardXP(player, amount)
 	DebugLog(player.Name, "earned", amount, "Total:", newXP)
 
 	-- Check for rank ups
-	local newRank = CalculateRankFromXP(newXP)
+	local newRank = RankHelper:CalculateRankFromXP(newXP)
 	local lastRewarded = stored.Rank.LastRankRewarded:Read() or 0
 
 	-- Give rewards for all newly achieved ranks
@@ -145,7 +133,7 @@ function RankService:GetPlayerRank(player)
 	end
 
 	local xp = stored.Rank.XP:Read() or 0
-	local rankIndex = CalculateRankFromXP(xp)
+	local rankIndex = RankHelper:CalculateRankFromXP(xp)
 
 	return {
 		Index = rankIndex,
@@ -160,7 +148,7 @@ function RankService:GetXPForNextRank(player)
 	if not stored then return nil end
 
 	local xp = stored.Rank.XP:Read() or 0
-	local currentRank = CalculateRankFromXP(xp)
+	local currentRank = RankHelper:CalculateRankFromXP(xp)
 
 	if currentRank >= #RankConfig.Ranks then
 		return nil -- Already at max rank
@@ -181,7 +169,7 @@ function RankService:Init()
 				if not stored then return end
 
 				local xp = stored.Rank.XP:Read() or 0
-				local currentRank = CalculateRankFromXP(xp)
+				local currentRank = RankHelper:CalculateRankFromXP(xp)
 				local lastRewarded = stored.Rank.LastRankRewarded:Read() or 0
 
 				-- Give any missed rewards
