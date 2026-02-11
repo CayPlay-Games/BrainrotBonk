@@ -30,6 +30,8 @@ local _ScreenGui = nil
 local _PowerFrame = nil
 local _PowerSegments = {}
 local _PowerLabel = nil
+local _QButton = nil
+local _EButton = nil
 local _RenderConnection = nil
 local _IsVisible = false
 
@@ -65,6 +67,28 @@ local function SetupUI()
 		if segment then
 			_PowerSegments[i] = segment
 		end
+	end
+
+	-- Get Q/E button references and add click handlers
+	_QButton = container:FindFirstChild("QButton")
+	_EButton = container:FindFirstChild("EButton")
+
+	if _QButton then
+		_QButton.MouseButton1Click:Connect(function()
+			local AimController = shared("AimController")
+			if AimController and AimController:IsAiming() then
+				AimController:AdjustPower(-1)
+			end
+		end)
+	end
+
+	if _EButton then
+		_EButton.MouseButton1Click:Connect(function()
+			local AimController = shared("AimController")
+			if AimController and AimController:IsAiming() then
+				AimController:AdjustPower(1)
+			end
+		end)
 	end
 
 	DebugLog("UI setup complete")

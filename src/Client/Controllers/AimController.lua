@@ -339,6 +339,10 @@ function AimController:IsAiming()
 	return _IsAiming
 end
 
+function AimController:AdjustPower(delta)
+	AdjustPower(delta)
+end
+
 -- Initializers --
 function AimController:Init()
 	DebugLog("Initializing...")
