@@ -1,0 +1,70 @@
+{
+  "name": "BRB",
+  "servePlaceIds": [
+    75581622435010,
+    114486227310680
+  ],
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
+      "$path": "src/ReplicatedStorage",
+
+      "SharedModules": {
+        "$path": "src/Shared",
+
+        "Eden": {
+          "$path": "src/Eden.lua",
+          "EdenConfig": {
+            "$path": "Eden.config.lua"
+          }
+        }
+      },
+
+      "Configs": {
+        "$path": "src/Configs"
+      }
+
+    },
+
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$ignoreUnknownInstances": true,
+      "$path": "src/ServerScriptService",
+
+      "ServerModules": {
+        "$path": "src/Server"
+      },
+
+      "ServerLoader": {
+        "$path": "src/ServerLoader.server.lua"
+      }
+
+    },
+
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$ignoreUnknownInstances": true,
+        "$path": "src/StarterPlayer/StarterPlayerScripts",
+
+        "ClientModules": {
+          "$path": "src/Client"
+        }
+      },
+
+      "$ignoreUnknownInstances": true
+    },
+
+    "ReplicatedFirst": {
+      "$className": "ReplicatedFirst",
+      "ClientLoader": {
+        "$path": "src/ClientLoader.client.lua"
+      }
+    }
+
+  }
+}
