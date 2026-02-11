@@ -247,34 +247,48 @@ function SkinService:Init()
 	end
 
 	-- Handle EquipSkin remote event
-	EquipSkinRemoteEvent.OnServerEvent:Connect(function(player, skinId)
+	EquipSkinRemoteEvent.OnServerEvent:Connect(function(player, skinId, mutation)
+		mutation = mutation or "Normal"
+
 		-- Validate skin exists
 		if not SkinsConfig.Skins[skinId] then
 			DebugLog(player.Name, "tried to equip invalid skin:", skinId)
 			return
 		end
 
-		-- Validate player owns skin (has any mutation collected)
+		-- Validate mutation exists
+		if not SkinsConfig.Mutations[mutation] then
+			DebugLog(player.Name, "tried to equip invalid mutation:", mutation)
+			return
+		end
+
+		-- Validate player owns this specific skin+mutation combo
 		local stored = DataStream.Stored[player]
 		if not stored then return end
 
 		local collected = stored.Skins.Collected:Read() or {}
-		local ownskin = false
+		local ownsMutation = false
 		for _, entry in ipairs(collected) do
 			if entry.SkinId == skinId then
-				ownskin = true
+				for _, ownedMutation in ipairs(entry.Mutations or { "Normal" }) do
+					if ownedMutation == mutation then
+						ownsMutation = true
+						break
+					end
+				end
 				break
 			end
 		end
 
-		if not ownskin then
-			DebugLog(player.Name, "tried to equip unowned skin:", skinId)
+		if not ownsMutation then
+			DebugLog(player.Name, "tried to equip unowned skin+mutation:", skinId, mutation)
 			return
 		end
 
-		-- Equip the skin
+		-- Equip the skin and mutation
 		stored.Skins.Equipped = skinId
-		DebugLog(player.Name, "equipped skin:", skinId)
+		stored.Skins.EquippedMutation = mutation
+		DebugLog(player.Name, "equipped skin:", skinId, "mutation:", mutation)
 	end)
 
 	Players.PlayerRemoving:Connect(OnPlayerRemoving)
