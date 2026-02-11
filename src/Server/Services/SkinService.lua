@@ -254,12 +254,20 @@ function SkinService:Init()
 			return
 		end
 
-		-- Validate player owns skin
+		-- Validate player owns skin (has any mutation collected)
 		local stored = DataStream.Stored[player]
 		if not stored then return end
 
-		local unlocked = stored.Skins.Unlocked:Read()
-		if not unlocked or not table.find(unlocked, skinId) then
+		local collected = stored.Skins.Collected:Read() or {}
+		local ownskin = false
+		for _, entry in ipairs(collected) do
+			if entry.SkinId == skinId then
+				ownskin = true
+				break
+			end
+		end
+
+		if not ownskin then
 			DebugLog(player.Name, "tried to equip unowned skin:", skinId)
 			return
 		end

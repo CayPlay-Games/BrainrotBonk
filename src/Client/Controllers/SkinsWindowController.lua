@@ -181,18 +181,18 @@ end
 
 -- Populates the grid with unlocked skins (optimized - only creates/removes as needed)
 local function PopulateGrid()
-	-- Get unlocked skins from DataStream
+	-- Get skins data from DataStream
 	local stored = ClientDataStream.Stored
 	if not stored then return end
 
-	local unlocked = stored.Skins.Unlocked:Read() or {}
+	local collected = stored.Skins.Collected:Read() or {}
 	_EquippedSkinId = stored.Skins.Equipped:Read() or SkinsConfig.DEFAULT_SKIN
 
-	-- Build set of currently unlocked skins
+	-- Build set of unlocked skins (a skin is unlocked if any mutation is collected)
 	local unlockedSet = {}
-	for _, skinId in ipairs(unlocked) do
-		if SkinsConfig.Skins[skinId] then
-			unlockedSet[skinId] = true
+	for _, entry in ipairs(collected) do
+		if SkinsConfig.Skins[entry.SkinId] then
+			unlockedSet[entry.SkinId] = true
 		end
 	end
 
@@ -305,7 +305,7 @@ function SkinsWindowController:Init()
 
 		SetupUI()
 
-		-- Listen for equipped skin changes
+		-- Listen for skin changes
 		local stored = ClientDataStream.Stored
 		if stored and stored.Skins then
 			stored.Skins.Equipped:Changed(function(newEquipped)
@@ -317,6 +317,11 @@ function SkinsWindowController:Init()
 					_EquipButton.Text = "Equipped"
 					_EquipButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 				end
+			end)
+
+			-- Listen for collection changes (new skins unlocked)
+			stored.Skins.Collected:Changed(function()
+				PopulateGrid()
 			end)
 
 			-- Initial population

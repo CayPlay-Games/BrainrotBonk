@@ -36,7 +36,10 @@ return {
 
 	Skins = {
 		Equipped = "Fluriflura", -- Currently equipped skin ID
-		Unlocked = { "Fluriflura", "GoldenFluriflura" }, -- Array of unlocked skin names
+		EquippedMutation = "Normal", -- Which mutation variant is equipped
+		Collected = { -- Skins collected (unlocked if any mutation exists for skin)
+			{ SkinId = "Fluriflura", Mutations = { "Normal", "Gold" } },
+		},
 	},
 
 	Titles = {

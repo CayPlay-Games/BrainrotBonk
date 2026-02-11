@@ -213,6 +213,7 @@ function UIController:Init()
 	DebugLog("Initializing...")
 	-- Pre-setup known windows
 	SetupWindow("SkinsWindow")
+	SetupWindow("IndexWindow")
 end
 
 -- Return Module --

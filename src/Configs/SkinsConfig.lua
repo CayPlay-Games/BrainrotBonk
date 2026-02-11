@@ -37,6 +37,30 @@ local Rarities = {
 	},
 }
 
+-- Mutation variants for skins
+local Mutations = {
+	Normal = {
+		Name = "Default",
+		Color = Color3.fromRGB(255, 255, 255),
+		SortOrder = 1,
+	},
+	Gold = {
+		Name = "Gold",
+		Color = Color3.fromRGB(255, 180, 0),
+		SortOrder = 2,
+	},
+	Diamond = {
+		Name = "Diamond",
+		Color = Color3.fromRGB(100, 200, 255),
+		SortOrder = 3,
+	},
+	Rainbow = {
+		Name = "Rainbow",
+		Color = Color3.fromRGB(255, 100, 255),
+		SortOrder = 4,
+	},
+}
+
 return TableHelper:DeepFreeze({
 	-- Folder name in ServerStorage containing skin models
 	SKINS_FOLDER_NAME = "Skins",
@@ -47,6 +71,9 @@ return TableHelper:DeepFreeze({
 	-- Rarity definitions
 	Rarities = Rarities,
 
+	-- Mutation variants
+	Mutations = Mutations,
+
 	-- Available skins
 	Skins = {
 		Fluriflura = {
@@ -55,13 +82,6 @@ return TableHelper:DeepFreeze({
 			Rarity = "Common",
 			-- Model name in ServerStorage.Skins
 			ModelName = "Fluriflura",
-		},
-		GoldenFluriflura = {
-			DisplayName = "Golden Fluriflura",
-			Description = "Golden Fluriflura Skin",
-			Rarity = "Legendary",
-			-- Model name in ServerStorage.Skins
-			ModelName = "GoldenFluriflura",
 		},
 		-- Add more skins here as they're created:
 		-- Skibidi = {

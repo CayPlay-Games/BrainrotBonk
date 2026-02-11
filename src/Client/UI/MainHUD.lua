@@ -129,6 +129,8 @@ local function SetupUI()
 
 	buttonGrid.IndexButton.MouseButton1Click:Connect(function()
 		DebugLog("Index clicked")
+		local UIController = shared("UIController")
+		UIController:ToggleWindow("IndexWindow")
 	end)
 
 	buttonGrid.QuestsButton.MouseButton1Click:Connect(function()
