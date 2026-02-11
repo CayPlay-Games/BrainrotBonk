@@ -32,6 +32,7 @@ local SkinService = shared("SkinService")
 -- Object References --
 local SubmitAimRemoteEvent = GetRemoteEvent("SubmitAim")
 local ForceStartRoundRemoteEvent = GetRemoteEvent("ForceStartRound")
+local ToggleAFKRemoteEvent = GetRemoteEvent("ToggleAFK")
 
 -- Constants --
 local States = {
@@ -51,6 +52,7 @@ local _RoundNumber = 0
 local _TimerConnection = nil
 local _TimeRemaining = 0
 local _WaitingCheckConnection = nil
+local _CountdownCheckConnection = nil
 
 -- Players currently in the round (Player -> PlayerRoundData)
 local _RoundPlayers = {}
@@ -278,13 +280,25 @@ local function TeleportAllToLobby()
 	end
 end
 
--- Checks if enough players are present to start
+-- Checks if enough non-AFK players are present to start
 local function CanStartRound()
-	local playerCount = #Players:GetPlayers()
-	if RoundConfig.DEBUG_MODE then
-		return playerCount >= 1
+	local activeCount = 0
+	for _, player in ipairs(Players:GetPlayers()) do
+		local sessionData = DataStream.Session[player]
+		local isAFK = sessionData and sessionData.IsAFK:Read() or false
+		if not isAFK then
+			activeCount = activeCount + 1
+		end
 	end
-	return playerCount >= RoundConfig.MIN_PLAYERS_TO_START
+	if RoundConfig.DEBUG_MODE then
+		return activeCount >= 1
+	end
+	return activeCount >= RoundConfig.MIN_PLAYERS_TO_START
+end
+
+-- Checks if AFK toggle is allowed (only during Waiting or RoundEnd)
+local function CanToggleAFK()
+	return _CurrentState == States.Waiting or _CurrentState == States.RoundEnd
 end
 
 -- Forward declaration for state transitions
@@ -309,21 +323,54 @@ local function EnterWaiting()
 
 	UpdateDataStream()
 
-	-- Start checking for enough players
+	-- Clean up any existing connections
 	if _WaitingCheckConnection then
 		_WaitingCheckConnection:Disconnect()
+		_WaitingCheckConnection = nil
+	end
+	if _CountdownCheckConnection then
+		_CountdownCheckConnection:Disconnect()
+		_CountdownCheckConnection = nil
 	end
 
-	-- Check immediately
-	if CanStartRound() then
+	-- Helper to start countdown with player monitoring
+	local function StartCountdownWithMonitoring()
 		DebugLog("Enough players, starting countdown")
 		StartTimer(RoundConfig.Timers.WAITING_COUNTDOWN, function()
+			-- Clean up monitoring connection
+			if _CountdownCheckConnection then
+				_CountdownCheckConnection:Disconnect()
+				_CountdownCheckConnection = nil
+			end
 			if CanStartRound() then
 				TransitionTo(States.MapLoading)
 			else
 				TransitionTo(States.Waiting)
 			end
 		end)
+
+		-- Monitor player count during countdown
+		_CountdownCheckConnection = RunService.Heartbeat:Connect(function()
+			if _CurrentState ~= States.Waiting then
+				_CountdownCheckConnection:Disconnect()
+				_CountdownCheckConnection = nil
+				return
+			end
+
+			-- If not enough players, cancel countdown and restart waiting
+			if not CanStartRound() then
+				DebugLog("Not enough players, cancelling countdown")
+				_CountdownCheckConnection:Disconnect()
+				_CountdownCheckConnection = nil
+				ClearTimer()
+				TransitionTo(States.Waiting)
+			end
+		end)
+	end
+
+	-- Check immediately
+	if CanStartRound() then
+		StartCountdownWithMonitoring()
 	else
 		-- Poll for players
 		_WaitingCheckConnection = RunService.Heartbeat:Connect(function()
@@ -336,14 +383,7 @@ local function EnterWaiting()
 			if CanStartRound() then
 				_WaitingCheckConnection:Disconnect()
 				_WaitingCheckConnection = nil
-				DebugLog("Enough players, starting countdown")
-				StartTimer(RoundConfig.Timers.WAITING_COUNTDOWN, function()
-					if CanStartRound() then
-						TransitionTo(States.MapLoading)
-					else
-						TransitionTo(States.Waiting)
-					end
-				end)
+				StartCountdownWithMonitoring()
 			end
 		end)
 	end
@@ -351,8 +391,6 @@ end
 
 local function EnterMapLoading()
 	DebugLog("Entering MapLoading state")
-
-	_RoundNumber = _RoundNumber + 1
 
 	-- Select a map (for now, use default; later can randomize or vote)
 	local mapId = MapsConfig.DEFAULT_MAP
@@ -391,8 +429,20 @@ end
 local function EnterSpawning()
 	DebugLog("Entering Spawning state")
 
-	-- Get all players to include in round
-	local allPlayers = Players:GetPlayers()
+	-- Start at round 1
+	_RoundNumber = 1
+
+	-- Get all non-AFK players to include in round
+	local allPlayers = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		local sessionData = DataStream.Session[player]
+		local isAFK = sessionData and sessionData.IsAFK:Read() or false
+		if not isAFK then
+			table.insert(allPlayers, player)
+		else
+			DebugLog(player.DisplayName, "is AFK, skipping spawn")
+		end
+	end
 
 	-- Shuffle spawn points for variety
 	local shuffledSpawnPoints = {}
@@ -602,7 +652,7 @@ local function EnterResolution()
 
 		-- Check win condition
 		local aliveCount = GetAliveCount()
-		if aliveCount <= 0 then
+		if aliveCount <= 1 then
 			checkConnection:Disconnect()
 			TransitionTo(States.RoundEnd)
 			return
@@ -641,9 +691,11 @@ local function EnterResolution()
 		if allSettled or elapsed > RoundConfig.Timers.RESOLUTION_TIMEOUT then
 			checkConnection:Disconnect()
 
-			if aliveCount <= 0 then
+			if aliveCount <= 1 then
 				TransitionTo(States.RoundEnd)
 			else
+				-- Increment round number for next aiming phase
+				_RoundNumber = _RoundNumber + 1
 				TransitionTo(States.Aiming)
 			end
 		end
@@ -652,6 +704,9 @@ end
 
 local function EnterRoundEnd()
 	DebugLog("Entering RoundEnd state")
+
+	-- Reset round number
+	_RoundNumber = 0
 
 	-- Determine winner
 	local winner = nil
@@ -841,6 +896,27 @@ function RoundService:IsPlayerAlive(player)
 	return _AlivePlayers[player] == true
 end
 
+-- Toggles AFK status for a player
+function RoundService:ToggleAFK(player)
+	if not CanToggleAFK() then
+		DebugLog(player.DisplayName, "tried to toggle AFK during", _CurrentState)
+		return false
+	end
+
+	local sessionData = DataStream.Session[player]
+	if not sessionData then
+		warn("[RoundService] No session data for player:", player.DisplayName)
+		return false
+	end
+
+	local currentAFK = sessionData.IsAFK:Read()
+	local newAFK = not currentAFK
+	sessionData.IsAFK = newAFK
+
+	DebugLog(player.DisplayName, "AFK status:", newAFK)
+	return true
+end
+
 -- Debug: Force start a round (only works if DEBUG_MODE is enabled)
 function RoundService:ForceStartRound()
 	if not RoundConfig.DEBUG_MODE then
@@ -877,6 +953,11 @@ function RoundService:Init()
 			self:ForceStartRound()
 		end)
 	end
+
+	-- AFK toggle remote event
+	ToggleAFKRemoteEvent.OnServerEvent:Connect(function(player)
+		self:ToggleAFK(player)
+	end)
 
 	-- Handle player leaving mid-round
 	Players.PlayerRemoving:Connect(function(player)

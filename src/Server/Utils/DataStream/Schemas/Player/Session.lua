@@ -1,5 +1,6 @@
 return {
 	PlotInstance = nil,
+	IsAFK = false,
 
 	Run = {
 		IsActive = false,

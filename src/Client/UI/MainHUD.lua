@@ -16,6 +16,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Dependencies --
 local ClientDataStream = shared("ClientDataStream")
 local RoundConfig = shared("RoundConfig")
+local GetRemoteEvent = shared("GetRemoteEvent")
+
+-- Remote Events --
+local ToggleAFKRemoteEvent = GetRemoteEvent("ToggleAFK")
 
 -- Object References --
 local LocalPlayer = Players.LocalPlayer
@@ -53,6 +57,34 @@ local function DebugLog(...)
 	if RoundConfig.DEBUG_LOG_STATE_CHANGES then
 		print("[MainHUD]", ...)
 	end
+end
+
+-- Updates AFK button visual state
+local function UpdateAFKButtonVisual()
+	if not _AFKButton then return end
+
+	-- Update button text and color
+	if _IsAFK then
+		_AFKButton.Text = "AFK"
+		_AFKButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80) -- Red when AFK
+	else
+		_AFKButton.Text = "Go AFK?"
+		_AFKButton.BackgroundColor3 = Color3.fromRGB(80, 200, 80) -- Green when active
+	end
+
+	-- Toggle child TextLabel visibility (visible when AFK, hidden when not)
+	local textLabel = _AFKButton:FindFirstChildWhichIsA("TextLabel")
+	if textLabel then
+		textLabel.Visible = _IsAFK
+	end
+end
+
+-- Updates AFK button visibility based on round state
+local function UpdateAFKButtonVisibility(state)
+	if not _AFKButton then return end
+	-- Only show AFK button during Waiting or RoundEnd
+	local canToggleAFK = (state == "Waiting" or state == "RoundEnd")
+	_AFKButton.Visible = canToggleAFK
 end
 
 -- Clones UI from ReplicatedStorage and gets references
@@ -101,11 +133,10 @@ local function SetupUI()
 		DebugLog("Quests clicked")
 	end)
 
-	-- AFK button toggle
+	-- AFK button toggle - request toggle from server
 	_AFKButton.MouseButton1Click:Connect(function()
-		_IsAFK = not _IsAFK
-		DebugLog("AFK toggled:", _IsAFK)
-		-- TODO: Update visual state and notify server
+		DebugLog("AFK button clicked, requesting toggle")
+		ToggleAFKRemoteEvent:FireServer()
 	end)
 
 	-- Bottom left buttons
@@ -135,8 +166,15 @@ local function UpdateStatus(state, roundNumber, timeRemaining)
 
 	local message = STATUS_MESSAGES[state] or state
 
+	-- For Waiting state, show countdown if active, otherwise waiting message
+	if state == "Waiting" then
+		if timeRemaining and timeRemaining > 0 then
+			message = string.format("Game starting in %d...", math.ceil(timeRemaining))
+		else
+			message = "Waiting for players..."
+		end
 	-- For Aiming state, show countdown
-	if state == "Aiming" and timeRemaining then
+	elseif state == "Aiming" and timeRemaining then
 		message = string.format(STATUS_MESSAGES.Aiming, math.ceil(timeRemaining))
 	end
 
@@ -149,6 +187,9 @@ local function UpdateStatus(state, roundNumber, timeRemaining)
 	if _RoundLabel then
 		_RoundLabel.Visible = (state ~= "Waiting")
 	end
+
+	-- Update AFK button visibility based on state
+	UpdateAFKButtonVisibility(state)
 end
 
 -- API Functions --
@@ -175,6 +216,18 @@ function MainHUD:Init()
 
 	task.defer(function()
 		task.wait(1)
+
+		-- Listen for AFK status changes from DataStream
+		local sessionData = ClientDataStream.Session
+		if sessionData and sessionData.IsAFK then
+			_IsAFK = sessionData.IsAFK:Read() or false
+			UpdateAFKButtonVisual()
+			sessionData.IsAFK:Changed(function(newAFK)
+				_IsAFK = newAFK
+				UpdateAFKButtonVisual()
+				DebugLog("AFK status changed to:", newAFK)
+			end)
+		end
 
 		local roundState = ClientDataStream.RoundState
 		if roundState then

@@ -31,9 +31,6 @@ return TableHelper:DeepFreeze({
 		INTERMISSION_DURATION = 5,
 	},
 
-	-- Physics / Resolution settings
-	FALL_ELIMINATION_Y = -50, -- Y position below which player is eliminated
-
 	-- Aim settings
 	AIM_POWER_MIN = 1,
 	AIM_POWER_MAX = 10,
