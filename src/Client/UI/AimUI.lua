@@ -138,6 +138,12 @@ local function Show()
 	SetupUI()
 	_ScreenGui.Enabled = true
 
+	-- Defensive: ensure old connection is cleaned up
+	if _RenderConnection then
+		_RenderConnection:Disconnect()
+		_RenderConnection = nil
+	end
+
 	-- Start updating power display
 	_RenderConnection = RunService.RenderStepped:Connect(function()
 		local AimController = shared("AimController")

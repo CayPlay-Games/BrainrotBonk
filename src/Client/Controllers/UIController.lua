@@ -186,7 +186,9 @@ function UIController:CloseWindow(windowName)
 	if config.UIScale then
 		local tween = TweenService:Create(config.UIScale, TWEEN_INFO_CLOSE, { Scale = 0 })
 		tween:Play()
-		tween.Completed:Connect(function()
+		local connection
+		connection = tween.Completed:Connect(function()
+			connection:Disconnect()
 			config.ScreenGui.Enabled = false
 		end)
 	else
