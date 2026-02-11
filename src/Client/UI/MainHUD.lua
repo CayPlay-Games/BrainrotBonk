@@ -26,7 +26,7 @@ local STATUS_MESSAGES = {
 	Waiting = "Waiting for players...",
 	MapLoading = "Loading map...",
 	Spawning = "Get ready!",
-	Aiming = "Aim your shot!",
+	Aiming = "Revealing aims in %d...",
 	Revealing = "Revealing aims...",
 	Launching = "Launch!",
 	Resolution = "Round in progress!",
@@ -130,10 +130,16 @@ local function SetupUI()
 end
 
 -- Updates the status display based on round state
-local function UpdateStatus(state, roundNumber)
+local function UpdateStatus(state, roundNumber, timeRemaining)
 	if not _StatusText then return end
 
 	local message = STATUS_MESSAGES[state] or state
+
+	-- For Aiming state, show countdown
+	if state == "Aiming" and timeRemaining then
+		message = string.format(STATUS_MESSAGES.Aiming, math.ceil(timeRemaining))
+	end
+
 	_StatusText.Text = message
 
 	if _RoundText and roundNumber then
@@ -172,14 +178,18 @@ function MainHUD:Init()
 
 		local roundState = ClientDataStream.RoundState
 		if roundState then
-			UpdateStatus(roundState.State:Read(), roundState.RoundNumber:Read())
+			UpdateStatus(roundState.State:Read(), roundState.RoundNumber:Read(), roundState.TimeRemaining:Read())
 
 			roundState.State:Changed(function(newState)
-				UpdateStatus(newState, roundState.RoundNumber:Read())
+				UpdateStatus(newState, roundState.RoundNumber:Read(), roundState.TimeRemaining:Read())
 			end)
 
 			roundState.RoundNumber:Changed(function(newRoundNumber)
-				UpdateStatus(roundState.State:Read(), newRoundNumber)
+				UpdateStatus(roundState.State:Read(), newRoundNumber, roundState.TimeRemaining:Read())
+			end)
+
+			roundState.TimeRemaining:Changed(function(newTimeRemaining)
+				UpdateStatus(roundState.State:Read(), roundState.RoundNumber:Read(), newTimeRemaining)
 			end)
 		end
 	end)

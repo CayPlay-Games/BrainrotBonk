@@ -7,6 +7,7 @@
 		- Q/E to adjust power level
 		- Visual arrow indicator for aim direction
 		- Auto-submits aim when phase ends
+		- Shows all player arrows during Revealing phase
 --]]
 
 -- Root --
@@ -16,6 +17,7 @@ local AimController = {}
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies --
 local ClientDataStream = shared("ClientDataStream")
@@ -26,12 +28,21 @@ local RoundConfig = shared("RoundConfig")
 local LocalPlayer = Players.LocalPlayer
 local CurrentCamera = workspace.CurrentCamera
 local SubmitAimRemoteEvent = GetRemoteEvent("SubmitAim")
+local ArrowTemplate = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Arrow")
+
+-- Constants --
+local ARROW_BASE_SCALE_X = 1 -- Base X scale at minimum power
+local ARROW_MAX_SCALE_X = 3 -- Max X scale at maximum power
+local ARROW_OFFSET_DISTANCE = 2 -- Distance from HRP to arrow base
+local ARROW_SIZE_MULTIPLIER = 0.4 -- 60% smaller than original
+local ARROW_ROTATION_OFFSET = CFrame.Angles(0, math.rad(-90), 0) -- Rotate to face correct direction
 
 -- Private Variables --
 local _IsAiming = false
 local _CurrentPower = RoundConfig.DEFAULT_AIM_POWER
 local _CurrentDirection = Vector3.new(0, 0, 1) -- Forward
 local _AimArrow = nil
+local _RevealArrows = {} -- Player -> Arrow for reveal phase
 local _InputConnection = nil
 local _RenderConnection = nil
 local _AimTimerThread = nil
@@ -45,48 +56,58 @@ local function DebugLog(...)
 	end
 end
 
--- Creates the visual arrow indicator
+-- Creates an arrow for a specific character
+local function CreateArrowForCharacter(character)
+	if not character then return nil end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return nil end
+
+	-- Clone the arrow template
+	local arrow = ArrowTemplate:Clone()
+	arrow.Name = "AimArrow"
+	arrow.Anchored = true
+	arrow.CanCollide = false
+	arrow.CastShadow = false
+	arrow.Parent = character
+
+	return arrow
+end
+
+-- Updates an arrow's position, rotation, and scale based on direction and power
+local function UpdateArrowTransform(arrow, character, direction, power)
+	if not arrow or not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	-- Calculate scale based on power (X direction)
+	local powerRatio = (power - RoundConfig.AIM_POWER_MIN) / (RoundConfig.AIM_POWER_MAX - RoundConfig.AIM_POWER_MIN)
+	local scaleX = ARROW_BASE_SCALE_X + powerRatio * (ARROW_MAX_SCALE_X - ARROW_BASE_SCALE_X)
+
+	-- Calculate arrow size
+	local baseSize = ArrowTemplate.Size * ARROW_SIZE_MULTIPLIER
+	local arrowSizeX = baseSize.X * scaleX
+	arrow.Size = Vector3.new(arrowSizeX, baseSize.Y, baseSize.Z)
+
+	-- Position arrow in front of player, offset by half the arrow length so it scales outward
+	local startPos = hrp.Position
+	local dir = direction.Unit
+	local outwardOffset = ARROW_OFFSET_DISTANCE + (arrowSizeX / 2)
+
+	-- Arrow points in the aim direction, with rotation offset
+	local arrowCFrame = CFrame.lookAt(startPos + dir * outwardOffset, startPos + dir * (outwardOffset + 10)) * ARROW_ROTATION_OFFSET
+	arrow.CFrame = arrowCFrame
+end
+
+-- Creates the visual arrow indicator for local player
 local function CreateAimArrow()
 	if _AimArrow then
 		_AimArrow:Destroy()
 	end
 
 	local character = LocalPlayer.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	-- Create arrow model
-	local arrow = Instance.new("Model")
-	arrow.Name = "AimArrow"
-
-	-- Arrow shaft
-	local shaft = Instance.new("Part")
-	shaft.Name = "Shaft"
-	shaft.Size = Vector3.new(0.3, 0.3, 3)
-	shaft.Color = Color3.fromRGB(255, 255, 255)
-	shaft.Material = Enum.Material.Neon
-	shaft.Anchored = true
-	shaft.CanCollide = false
-	shaft.CastShadow = false
-	shaft.Parent = arrow
-
-	-- Arrow head
-	local head = Instance.new("WedgePart")
-	head.Name = "Head"
-	head.Size = Vector3.new(0.6, 0.6, 0.8)
-	head.Color = Color3.fromRGB(255, 255, 255)
-	head.Material = Enum.Material.Neon
-	head.Anchored = true
-	head.CanCollide = false
-	head.CastShadow = false
-	head.Parent = arrow
-
-	arrow.PrimaryPart = shaft
-	arrow.Parent = character
-
-	_AimArrow = arrow
+	_AimArrow = CreateArrowForCharacter(character)
 end
 
 -- Updates the arrow position and rotation to match aim direction
@@ -99,43 +120,23 @@ local function UpdateAimArrow()
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
-	local shaft = _AimArrow:FindFirstChild("Shaft")
-	local head = _AimArrow:FindFirstChild("Head")
-	if not shaft or not head then return end
+	-- Calculate scale based on power (X direction)
+	local powerRatio = (_CurrentPower - RoundConfig.AIM_POWER_MIN) / (RoundConfig.AIM_POWER_MAX - RoundConfig.AIM_POWER_MIN)
+	local scaleX = ARROW_BASE_SCALE_X + powerRatio * (ARROW_MAX_SCALE_X - ARROW_BASE_SCALE_X)
 
-	-- Position arrow in front of player
+	-- Calculate arrow size
+	local baseSize = ArrowTemplate.Size * ARROW_SIZE_MULTIPLIER
+	local arrowSizeX = baseSize.X * scaleX
+	_AimArrow.Size = Vector3.new(arrowSizeX, baseSize.Y, baseSize.Z)
+
+	-- Position arrow in front of player, offset by half the arrow length so it scales outward
 	local startPos = hrp.Position
 	local direction = _CurrentDirection.Unit
-	local arrowLength = 1.5 + (_CurrentPower / RoundConfig.AIM_POWER_MAX) * 2 -- Scale with power
+	local outwardOffset = ARROW_OFFSET_DISTANCE + (arrowSizeX / 2)
 
-	-- Arrow shaft
-	local shaftLength = arrowLength
-	shaft.Size = Vector3.new(0.3, 0.3, shaftLength)
-	shaft.CFrame = CFrame.lookAt(startPos + direction * (shaftLength / 2 + 1.5), startPos + direction * 10)
-
-	-- Arrow head at end of shaft
-	head.CFrame = CFrame.lookAt(startPos + direction * (shaftLength + 1.5 + 0.4), startPos + direction * 10) * CFrame.Angles(0, 0, math.rad(90))
-
-	-- Color based on power (green -> yellow -> red)
-	local powerRatio = (_CurrentPower - RoundConfig.AIM_POWER_MIN) / (RoundConfig.AIM_POWER_MAX - RoundConfig.AIM_POWER_MIN)
-	local color
-	if powerRatio < 0.5 then
-		-- Green to Yellow
-		color = Color3.fromRGB(
-			math.floor(255 * (powerRatio * 2)),
-			255,
-			0
-		)
-	else
-		-- Yellow to Red
-		color = Color3.fromRGB(
-			255,
-			math.floor(255 * (1 - (powerRatio - 0.5) * 2)),
-			0
-		)
-	end
-	shaft.Color = color
-	head.Color = color
+	-- Arrow points in the aim direction, with rotation offset
+	local arrowCFrame = CFrame.lookAt(startPos + direction * outwardOffset, startPos + direction * (outwardOffset + 10)) * ARROW_ROTATION_OFFSET
+	_AimArrow.CFrame = arrowCFrame
 end
 
 -- Destroys the aim arrow
@@ -268,6 +269,62 @@ local function StopAiming()
 	DestroyAimArrow()
 end
 
+-- Creates arrows for all players during the reveal phase
+local function StartReveal()
+	DebugLog("Starting reveal phase arrows")
+
+	-- Get revealed aims from RoundState in ClientDataStream
+	local roundState = ClientDataStream.RoundState
+	if not roundState then
+		warn("[AimController] RoundState not found in ClientDataStream")
+		return
+	end
+
+	local revealedAims = roundState.RevealedAims:Read()
+	if not revealedAims then return end
+
+	-- Create arrow for each player with revealed aim
+	for odometer, aimData in pairs(revealedAims) do
+		-- Find the player's character by UserId
+		local userId = tonumber(odometer)
+		local player = Players:GetPlayerByUserId(userId)
+		local character = nil
+
+		if player then
+			character = player.Character
+		elseif userId and userId < 0 then
+			-- Dummy player - model name is "Dummy_X" where X is absolute value of UserId
+			local dummyModelName = "Dummy_" .. math.abs(userId)
+			character = workspace:FindFirstChild(dummyModelName)
+		end
+
+		if character and aimData.Direction and aimData.Power then
+			-- Reconstruct direction Vector3 from table
+			local direction = Vector3.new(aimData.Direction.X, aimData.Direction.Y, aimData.Direction.Z)
+			local power = aimData.Power
+
+			local arrow = CreateArrowForCharacter(character)
+			if arrow then
+				UpdateArrowTransform(arrow, character, direction, power)
+				_RevealArrows[character] = arrow
+				DebugLog("Created reveal arrow for", character.Name)
+			end
+		end
+	end
+end
+
+-- Destroys all reveal phase arrows
+local function StopReveal()
+	DebugLog("Stopping reveal phase arrows")
+
+	for _, arrow in pairs(_RevealArrows) do
+		if arrow then
+			arrow:Destroy()
+		end
+	end
+	_RevealArrows = {}
+end
+
 -- API Functions --
 
 function AimController:GetCurrentPower()
@@ -307,16 +364,26 @@ function AimController:Init()
 
 				DebugLog("Round state changed:", previousState, "->", newState)
 
+				-- Handle Aiming phase
 				if newState == "Aiming" then
 					StartAiming()
 				elseif previousState == "Aiming" and newState ~= "Aiming" then
 					StopAiming()
+				end
+
+				-- Handle Revealing phase
+				if newState == "Revealing" then
+					StartReveal()
+				elseif previousState == "Revealing" and newState ~= "Revealing" then
+					StopReveal()
 				end
 			end)
 
 			-- Check if we're already in aiming state
 			if lastKnownState == "Aiming" then
 				StartAiming()
+			elseif lastKnownState == "Revealing" then
+				StartReveal()
 			end
 		else
 			warn("[AimController] RoundState not found in ClientDataStream")
