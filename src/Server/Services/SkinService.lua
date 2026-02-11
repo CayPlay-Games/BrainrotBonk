@@ -12,14 +12,20 @@ local SkinService = {}
 
 -- Roblox Services --
 local ServerStorage = game:GetService("ServerStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 -- Dependencies --
 local RoundConfig = shared("RoundConfig")
 local SkinsConfig = shared("SkinsConfig")
+local DataStream = shared("DataStream")
+local GetRemoteEvent = shared("GetRemoteEvent")
+
+-- Remote Events --
+local EquipSkinRemoteEvent = GetRemoteEvent("EquipSkin")
 
 -- Constants --
-local SKINS_FOLDER = ServerStorage:FindFirstChild(SkinsConfig.SKINS_FOLDER_NAME)
+local SKINS_FOLDER = ReplicatedStorage:FindFirstChild("Assets"):FindFirstChild(SkinsConfig.SKINS_FOLDER_NAME)
 
 -- Private Variables --
 -- Stores original HumanoidDescription for each player to restore later
@@ -209,9 +215,15 @@ function SkinService:RestoreOriginalCharacter(player)
 	DebugLog("Restored original character for", player.Name)
 end
 
--- Gets the skin ID for a player (future: check unlocks)
+-- Gets the skin ID for a player from their stored data
 function SkinService:GetPlayerSkin(player)
-	-- For now, everyone uses default
+	local stored = DataStream.Stored[player]
+	if stored then
+		local equipped = stored.Skins.Equipped:Read()
+		if equipped and SkinsConfig.Skins[equipped] then
+			return equipped
+		end
+	end
 	return SkinsConfig.DEFAULT_SKIN
 end
 
@@ -233,6 +245,29 @@ function SkinService:Init()
 		end
 		DebugLog("Found", skinCount, "skins in config")
 	end
+
+	-- Handle EquipSkin remote event
+	EquipSkinRemoteEvent.OnServerEvent:Connect(function(player, skinId)
+		-- Validate skin exists
+		if not SkinsConfig.Skins[skinId] then
+			DebugLog(player.Name, "tried to equip invalid skin:", skinId)
+			return
+		end
+
+		-- Validate player owns skin
+		local stored = DataStream.Stored[player]
+		if not stored then return end
+
+		local unlocked = stored.Skins.Unlocked:Read()
+		if not unlocked or not table.find(unlocked, skinId) then
+			DebugLog(player.Name, "tried to equip unowned skin:", skinId)
+			return
+		end
+
+		-- Equip the skin
+		stored.Skins.Equipped = skinId
+		DebugLog(player.Name, "equipped skin:", skinId)
+	end)
 
 	Players.PlayerRemoving:Connect(OnPlayerRemoving)
 end

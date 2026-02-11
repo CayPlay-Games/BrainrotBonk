@@ -33,4 +33,9 @@ return {
 	},
 
 	Cosmetics = {},
+
+	Skins = {
+		Equipped = "Fluriflura", -- Currently equipped skin ID
+		Unlocked = { "Fluriflura", "GoldenFluriflura" }, -- Array of unlocked skin names
+	},
 }
