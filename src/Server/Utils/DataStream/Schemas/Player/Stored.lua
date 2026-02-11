@@ -38,4 +38,9 @@ return {
 		Equipped = "Fluriflura", -- Currently equipped skin ID
 		Unlocked = { "Fluriflura", "GoldenFluriflura" }, -- Array of unlocked skin names
 	},
+
+	Titles = {
+		Equipped = "Newbie", -- Currently equipped title ID (nil = no title)
+		Unlocked = { "Newbie" }, -- Array of unlocked title IDs
+	},
 }

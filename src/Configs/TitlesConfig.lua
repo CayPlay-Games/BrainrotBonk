@@ -1,0 +1,34 @@
+--[[
+	TitlesConfig.lua
+
+	Description:
+		Configuration for player titles.
+		Titles are displayed above player names in overhead displays.
+--]]
+
+local TableHelper = shared("TableHelper")
+
+return TableHelper:DeepFreeze({
+	-- Default title (nil = no title displayed)
+	DEFAULT_TITLE = nil,
+
+	-- Available titles
+	Titles = {
+		Newbie = {
+			DisplayName = "Newbie",
+			Color = Color3.fromRGB(200, 200, 200),
+		},
+		Veteran = {
+			DisplayName = "Veteran",
+			Color = Color3.fromRGB(80, 150, 255),
+		},
+		Champion = {
+			DisplayName = "Champion",
+			Color = Color3.fromRGB(255, 215, 0),
+		},
+		Legend = {
+			DisplayName = "Legend",
+			Color = Color3.fromRGB(255, 100, 255),
+		},
+	},
+})
