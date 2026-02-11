@@ -25,6 +25,8 @@ local DataStream = shared("DataStream")
 local Signal = shared("Signal")
 local GetRemoteEvent = shared("GetRemoteEvent")
 local RoundConfig = shared("RoundConfig")
+local RankConfig = shared("RankConfig")
+local RankService = shared("RankService")
 local MapService = shared("MapService")
 local MapsConfig = shared("MapsConfig")
 local SkinService = shared("SkinService")
@@ -270,13 +272,6 @@ local function TeleportToLobby(player)
 		hrp.AssemblyLinearVelocity = Vector3.zero
 		hrp.AssemblyAngularVelocity = Vector3.zero
 		hrp.CFrame = CFrame.new(RoundConfig.LOBBY_SPAWN_POSITION)
-	end
-end
-
--- Teleports all players to the lobby
-local function TeleportAllToLobby()
-	for _, player in ipairs(Players:GetPlayers()) do
-		TeleportToLobby(player)
 	end
 end
 
@@ -744,21 +739,19 @@ local function EnterRoundEnd()
 		MapService:UnloadCurrentMap()
 		_CurrentSpawnPoints = {}
 
-		-- Restore original characters (removes physics box) - skip dummies
-		for entity in pairs(_RoundPlayers) do
+		-- Restore original characters (removes physics box) and teleport to lobby
+		-- Only for players still alive (eliminated players were already handled)
+		for entity in pairs(_AlivePlayers) do
 			if type(entity) == "table" and entity.IsDummy then
-				-- Cleanup dummy
 				CleanupDummy(entity)
 			else
 				SkinService:RestoreOriginalCharacter(entity)
+				TeleportToLobby(entity)
 			end
 		end
 
 		-- Cleanup any remaining dummies
 		CleanupAllDummies()
-
-		-- Teleport all players back to the lobby
-		TeleportAllToLobby()
 
 		-- Intermission before next round
 		DebugLog("Intermission...")
@@ -1005,6 +998,30 @@ function RoundService:Init()
 			end
 		end)
 	end
+
+	-- Award XP when round ends
+	self.RoundEnded:Connect(function(winner)
+		-- Award XP to all players who participated
+		for entity, data in pairs(_RoundPlayers) do
+			-- Skip dummies
+			if type(entity) == "table" and entity.IsDummy then
+				continue
+			end
+
+			-- Award PlayGame XP for participating
+			RankService:AwardXP(entity, RankConfig.XPRewards.PlayGame)
+
+			-- Award placement XP
+			local placement = data.PlacementPosition
+			if placement == 1 then
+				RankService:AwardXP(entity, RankConfig.XPRewards.Place1st)
+			elseif placement == 2 then
+				RankService:AwardXP(entity, RankConfig.XPRewards.Place2nd)
+			elseif placement == 3 then
+				RankService:AwardXP(entity, RankConfig.XPRewards.Place3rd)
+			end
+		end
+	end)
 
 	-- Start the round system (Eden only calls :Init(), not :Start())
 	DebugLog("Starting round system...")

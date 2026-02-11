@@ -1,10 +1,11 @@
 return {
-	_VERSION = 2,
+	_VERSION = 3,
 
 	Collections = {
 		Currencies = {
 			StepShards = 0,
 			Momentum = 0,
+			Coins = 0, -- Currency for rank rewards
 		},
 	},
 
@@ -46,4 +47,16 @@ return {
 		Equipped = "Newbie", -- Currently equipped title ID (nil = no title)
 		Unlocked = { "Newbie" }, -- Array of unlocked title IDs
 	},
+
+	Auras = {
+		Equipped = nil, -- Currently equipped aura ID (nil = none)
+		Unlocked = {}, -- Array of unlocked aura IDs
+	},
+
+	Rank = {
+		XP = 0, -- Total XP earned (rank calculated from this)
+		LastRankRewarded = 0, -- Highest rank index that rewards have been given for
+	},
+
+	Spins = 0, -- Number of spins available
 }
