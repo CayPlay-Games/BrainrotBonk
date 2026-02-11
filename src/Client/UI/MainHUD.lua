@@ -119,6 +119,8 @@ local function SetupUI()
 	-- Hook up menu button clicks
 	buttonGrid.PenguinButton.MouseButton1Click:Connect(function()
 		DebugLog("Penguin clicked")
+		local UIController = shared("UIController")
+		UIController:ToggleWindow("SkinsWindow")
 	end)
 
 	buttonGrid.ShopButton.MouseButton1Click:Connect(function()
