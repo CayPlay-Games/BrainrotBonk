@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies --
 local ClientDataStream = shared("ClientDataStream")
+local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
 local RoundConfig = shared("RoundConfig")
 local GetRemoteEvent = shared("GetRemoteEvent")
 
@@ -50,6 +51,7 @@ local _SettingsButton = nil
 local _PickMapButton = nil
 local _PatchNotesButton = nil
 local _IsAFK = false
+local _PlayerStoredDataStream = nil
 
 -- Internal Functions --
 
@@ -227,6 +229,22 @@ function MainHUD:Init()
 
 	SetupUI()
 
+	-- Listen for currency changes (Stored data)
+	OnLocalPlayerStoredDataStreamLoaded(function(PlayerStoredDataStream)
+		_PlayerStoredDataStream = PlayerStoredDataStream
+
+		-- Set initial value
+		local coins = _PlayerStoredDataStream.Collections.Currencies.Coins:Read() or 0
+		MainHUD:SetCurrency(coins)
+
+		-- Listen for changes
+		_PlayerStoredDataStream.Collections.Currencies.Coins:Changed(function(newAmount)
+			MainHUD:SetCurrency(newAmount)
+			DebugLog("Currency updated to:", newAmount)
+		end)
+	end)
+
+	-- Session and RoundState data (not Stored, use ClientDataStream directly)
 	task.defer(function()
 		task.wait(1)
 
@@ -239,20 +257,6 @@ function MainHUD:Init()
 				_IsAFK = newAFK
 				UpdateAFKButtonVisual()
 				DebugLog("AFK status changed to:", newAFK)
-			end)
-		end
-
-		-- Listen for currency changes
-		local stored = ClientDataStream.Stored
-		if stored and stored.Collections and stored.Collections.Currencies then
-			-- Set initial value
-			local coins = stored.Collections.Currencies.Coins:Read() or 0
-			MainHUD:SetCurrency(coins)
-
-			-- Listen for changes
-			stored.Collections.Currencies.Coins:Changed(function(newAmount)
-				MainHUD:SetCurrency(newAmount)
-				DebugLog("Currency updated to:", newAmount)
 			end)
 		end
 

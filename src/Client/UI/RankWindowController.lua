@@ -13,7 +13,7 @@ local RankWindowController = {}
 local Players = game:GetService("Players")
 
 -- Dependencies --
-local ClientDataStream = shared("ClientDataStream")
+local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
 local RankConfig = shared("RankConfig")
 local RankHelper = shared("RankHelper")
 local RoundConfig = shared("RoundConfig")
@@ -31,6 +31,7 @@ local _XPText = nil
 local _NextRankLabel = nil
 local _RankCards = {} -- rankIndex -> card
 local _IsSetup = false
+local _PlayerStoredDataStream = nil
 
 -- Internal Functions --
 
@@ -42,13 +43,12 @@ end
 
 -- Updates the XP bar display
 local function UpdateXPBar()
-	local stored = ClientDataStream.Stored
-	if not stored then
+	if not _PlayerStoredDataStream then
 		DebugLog("UpdateXPBar: No stored data")
 		return
 	end
 
-	local currentXP = stored.Rank.XP:Read() or 0
+	local currentXP = _PlayerStoredDataStream.Rank.XP:Read() or 0
 	local progress = RankHelper:GetXPProgress(currentXP)
 
 	DebugLog("UpdateXPBar: XP =", currentXP, "Progress =", progress.PrevXP, "->", progress.NextXP)
@@ -74,10 +74,9 @@ end
 
 -- Updates the claimed/locked status of a card
 local function UpdateCardStatus(card, rankIndex)
-	local stored = ClientDataStream.Stored
-	if not stored then return end
+	if not _PlayerStoredDataStream then return end
 
-	local lastRewarded = stored.Rank.LastRankRewarded:Read() or 0
+	local lastRewarded = _PlayerStoredDataStream.Rank.LastRankRewarded:Read() or 0
 	local statusFrame = card:FindFirstChild("StatusFrame")
 	if not statusFrame then return end
 
@@ -219,10 +218,9 @@ end
 
 -- Scrolls to show the last claimed rank
 local function ScrollToLastClaimed()
-	local stored = ClientDataStream.Stored
-	if not stored or not _CardScroll or not _CardTemplate then return end
+	if not _PlayerStoredDataStream or not _CardScroll or not _CardTemplate then return end
 
-	local lastRewarded = stored.Rank.LastRankRewarded:Read() or 0
+	local lastRewarded = _PlayerStoredDataStream.Rank.LastRankRewarded:Read() or 0
 	if lastRewarded <= 0 then return end
 
 	-- Get layout padding from UIListLayout
@@ -259,22 +257,19 @@ end
 function RankWindowController:Init()
 	DebugLog("Initializing...")
 
-	task.defer(function()
-		task.wait(1) -- Wait for DataStream
+	OnLocalPlayerStoredDataStreamLoaded(function(PlayerStoredDataStream)
+		_PlayerStoredDataStream = PlayerStoredDataStream
 
 		SetupUI()
 
 		-- Listen for rank data changes
-		local stored = ClientDataStream.Stored
-		if stored and stored.Rank then
-			stored.Rank.XP:Changed(function()
-				UpdateXPBar()
-			end)
+		_PlayerStoredDataStream.Rank.XP:Changed(function()
+			UpdateXPBar()
+		end)
 
-			stored.Rank.LastRankRewarded:Changed(function()
-				UpdateAllCardStatuses()
-			end)
-		end
+		_PlayerStoredDataStream.Rank.LastRankRewarded:Changed(function()
+			UpdateAllCardStatuses()
+		end)
 
 		-- Initial population
 		PopulateCards()

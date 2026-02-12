@@ -15,7 +15,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies --
-local ClientDataStream = shared("ClientDataStream")
+local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
 local SkinsConfig = shared("SkinsConfig")
 local RoundConfig = shared("RoundConfig")
 local ViewportHelper = shared("ViewportHelper")
@@ -46,6 +46,7 @@ local _MilestoneLabel = nil
 local _TopTabs = nil
 
 local _IsSetup = false
+local _PlayerStoredDataStream = nil
 
 -- Sidebar tab configuration
 local SIDEBAR_TABS = {
@@ -74,10 +75,9 @@ end
 
 -- Checks if a skin+mutation combo is collected
 local function IsCollected(skinId, mutation)
-	local stored = ClientDataStream.Stored
-	if not stored or not stored.Skins then return false end
+	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then return false end
 
-	local collected = stored.Skins.Collected:Read() or {}
+	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
 	for _, entry in ipairs(collected) do
 		if entry.SkinId == skinId then
 			return table.find(entry.Mutations, mutation) ~= nil
@@ -88,10 +88,9 @@ end
 
 -- Gets count of collected skins for a specific mutation
 local function GetCollectedMutationCount(mutation)
-	local stored = ClientDataStream.Stored
-	if not stored or not stored.Skins then return 0 end
+	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then return 0 end
 
-	local collected = stored.Skins.Collected:Read() or {}
+	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
 	local count = 0
 	for _, entry in ipairs(collected) do
 		if table.find(entry.Mutations, mutation) then
@@ -103,10 +102,9 @@ end
 
 -- Gets total number of distinct skins the player has collected (regardless of mutation)
 local function GetPlayerSkinCount()
-	local stored = ClientDataStream.Stored
-	if not stored or not stored.Skins then return 0 end
+	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then return 0 end
 
-	local collected = stored.Skins.Collected:Read() or {}
+	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
 	return #collected
 end
 
@@ -127,10 +125,9 @@ end
 
 -- Gets total collected across all mutations (for header display)
 local function GetTotalCollectedCount()
-	local stored = ClientDataStream.Stored
-	if not stored or not stored.Skins then return 0 end
+	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then return 0 end
 
-	local collected = stored.Skins.Collected:Read() or {}
+	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
 	local count = 0
 	for _, entry in ipairs(collected) do
 		count = count + #entry.Mutations
@@ -471,18 +468,15 @@ end
 function IndexWindowController:Init()
 	DebugLog("Initializing...")
 
-	task.defer(function()
-		task.wait(1)
+	OnLocalPlayerStoredDataStreamLoaded(function(PlayerStoredDataStream)
+		_PlayerStoredDataStream = PlayerStoredDataStream
 
 		SetupUI()
 
 		-- Listen for collection changes
-		local stored = ClientDataStream.Stored
-		if stored and stored.Skins then
-			stored.Skins.Collected:Changed(function()
-				PopulateGrid()
-			end)
-		end
+		_PlayerStoredDataStream.Skins.Collected:Changed(function()
+			PopulateGrid()
+		end)
 
 		-- Initial population
 		PopulateGrid()

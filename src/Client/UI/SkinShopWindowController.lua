@@ -14,7 +14,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies --
-local ClientDataStream = shared("ClientDataStream")
+local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
 local SkinBoxesConfig = shared("SkinBoxesConfig")
 local SkinsConfig = shared("SkinsConfig")
 local GetRemoteEvent = shared("GetRemoteEvent")
@@ -36,6 +36,7 @@ local _BoxTemplate = nil
 local _CurrencyAmount = nil
 local _BoxCards = {} -- boxId -> card
 local _IsSetup = false
+local _PlayerStoredDataStream = nil
 
 -- Internal Functions --
 
@@ -297,10 +298,9 @@ end
 
 -- Updates the currency display
 local function UpdateCurrencyDisplay()
-	local stored = ClientDataStream.Stored
-	if not stored or not _CurrencyAmount then return end
+	if not _PlayerStoredDataStream or not _CurrencyAmount then return end
 
-	local coins = stored.Collections.Currencies.Coins:Read() or 0
+	local coins = _PlayerStoredDataStream.Collections.Currencies.Coins:Read() or 0
 	_CurrencyAmount.Text = tostring(coins)
 end
 
@@ -345,18 +345,15 @@ end
 function SkinShopWindowController:Init()
 	DebugLog("Initializing...")
 
-	task.defer(function()
-		task.wait(1) -- Wait for DataStream
+	OnLocalPlayerStoredDataStreamLoaded(function(PlayerStoredDataStream)
+		_PlayerStoredDataStream = PlayerStoredDataStream
 
 		SetupUI()
 
 		-- Listen for currency changes
-		local stored = ClientDataStream.Stored
-		if stored and stored.Collections and stored.Collections.Currencies then
-			stored.Collections.Currencies.Coins:Changed(function()
-				UpdateCurrencyDisplay()
-			end)
-		end
+		_PlayerStoredDataStream.Collections.Currencies.Coins:Changed(function()
+			UpdateCurrencyDisplay()
+		end)
 
 		-- Initial population
 		PopulateBoxes()

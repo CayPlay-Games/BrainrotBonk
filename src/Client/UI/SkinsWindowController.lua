@@ -14,7 +14,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies --
-local ClientDataStream = shared("ClientDataStream")
+local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
 local SkinsConfig = shared("SkinsConfig")
 local GetRemoteEvent = shared("GetRemoteEvent")
 local RoundConfig = shared("RoundConfig")
@@ -45,6 +45,7 @@ local _EquippedSkinId = nil
 local _EquippedMutation = nil
 local _CurrentPreviewModel = nil
 local _IsSetup = false
+local _PlayerStoredDataStream = nil
 
 -- Internal Functions --
 
@@ -215,12 +216,11 @@ end
 -- Populates the grid with unlocked skins (optimized - only creates/removes as needed)
 local function PopulateGrid()
 	-- Get skins data from DataStream
-	local stored = ClientDataStream.Stored
-	if not stored then return end
+	if not _PlayerStoredDataStream then return end
 
-	local collected = stored.Skins.Collected:Read() or {}
-	_EquippedSkinId = stored.Skins.Equipped:Read() or SkinsConfig.DEFAULT_SKIN
-	_EquippedMutation = stored.Skins.EquippedMutation:Read() or "Normal"
+	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
+	_EquippedSkinId = _PlayerStoredDataStream.Skins.Equipped:Read() or SkinsConfig.DEFAULT_SKIN
+	_EquippedMutation = _PlayerStoredDataStream.Skins.EquippedMutation:Read() or "Normal"
 
 	-- Build set of unlocked skin+mutation combos
 	-- Key: "skinId_mutation", Value: { SkinId, Mutation }
@@ -350,47 +350,43 @@ end
 function SkinsWindowController:Init()
 	DebugLog("Initializing...")
 
-	-- Wait for DataStream
-	task.defer(function()
-		task.wait(1)
+	OnLocalPlayerStoredDataStreamLoaded(function(PlayerStoredDataStream)
+		_PlayerStoredDataStream = PlayerStoredDataStream
 
 		SetupUI()
 
 		-- Listen for skin changes
-		local stored = ClientDataStream.Stored
-		if stored and stored.Skins then
-			stored.Skins.Equipped:Changed(function(newEquipped)
-				_EquippedSkinId = newEquipped
-				UpdateEquippedIndicators()
+		_PlayerStoredDataStream.Skins.Equipped:Changed(function(newEquipped)
+			_EquippedSkinId = newEquipped
+			UpdateEquippedIndicators()
 
-				-- Update equip button if viewing this skin+mutation combo
-				local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
-				if isNowEquipped then
-					_EquipButton.Text = "Equipped"
-					_EquipButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-				end
-			end)
+			-- Update equip button if viewing this skin+mutation combo
+			local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
+			if isNowEquipped then
+				_EquipButton.Text = "Equipped"
+				_EquipButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+			end
+		end)
 
-			stored.Skins.EquippedMutation:Changed(function(newMutation)
-				_EquippedMutation = newMutation
-				UpdateEquippedIndicators()
+		_PlayerStoredDataStream.Skins.EquippedMutation:Changed(function(newMutation)
+			_EquippedMutation = newMutation
+			UpdateEquippedIndicators()
 
-				-- Update equip button if viewing this skin+mutation combo
-				local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
-				if isNowEquipped then
-					_EquipButton.Text = "Equipped"
-					_EquipButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-				end
-			end)
+			-- Update equip button if viewing this skin+mutation combo
+			local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
+			if isNowEquipped then
+				_EquipButton.Text = "Equipped"
+				_EquipButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+			end
+		end)
 
-			-- Listen for collection changes (new skins unlocked)
-			stored.Skins.Collected:Changed(function()
-				PopulateGrid()
-			end)
-
-			-- Initial population
+		-- Listen for collection changes (new skins unlocked)
+		_PlayerStoredDataStream.Skins.Collected:Changed(function()
 			PopulateGrid()
-		end
+		end)
+
+		-- Initial population
+		PopulateGrid()
 	end)
 end
 
