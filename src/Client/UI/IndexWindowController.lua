@@ -101,11 +101,20 @@ local function GetCollectedMutationCount(mutation)
 end
 
 -- Gets total number of distinct skins the player has collected (regardless of mutation)
-local function GetPlayerSkinCount()
+local function _GetPlayerSkinCount()
 	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then return 0 end
 
 	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
 	return #collected
+end
+
+-- Gets total number of skins defined in config
+local function GetTotalSkinCount()
+	local count = 0
+	for _ in pairs(SkinsConfig.Skins) do
+		count = count + 1
+	end
+	return count
 end
 
 -- Gets total count of all possible skin+mutation combos (for header display)
@@ -288,16 +297,16 @@ local function UpdateProgress()
 	end
 
 	-- Bottom bar shows mutation-specific progress:
-	-- How many of the player's collected skins have this mutation variant
-	local playerSkinCount = GetPlayerSkinCount()
+	-- How many skins with this mutation variant collected out of total skins
+	local totalSkinCount = GetTotalSkinCount()
 	local mutationCollected = GetCollectedMutationCount(_SelectedMutation)
 
 	if _ProgressCount then
-		_ProgressCount.Text = mutationCollected .. "/" .. playerSkinCount
+		_ProgressCount.Text = mutationCollected .. "/" .. totalSkinCount
 	end
 
 	if _ProgressBarFill then
-		local ratio = playerSkinCount > 0 and (mutationCollected / playerSkinCount) or 0
+		local ratio = totalSkinCount > 0 and (mutationCollected / totalSkinCount) or 0
 		_ProgressBarFill.Size = UDim2.new(ratio, 0, 1, 0)
 	end
 

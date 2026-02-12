@@ -73,22 +73,24 @@ end
 
 -- Helper to roll a random mutation based on MutationChances
 function SkinBoxesConfig:RollMutation()
-	local total = 0
-	for _, entry in ipairs(self.MutationChances) do
-		total = total + entry.Weight
-	end
+	return "Normal"
+	-- -- TODO: MUTATIONS ARE ON HOLD FOR NOW
+	-- local total = 0
+	-- for _, entry in ipairs(self.MutationChances) do
+	-- 	total = total + entry.Weight
+	-- end
 
-	local roll = math.random(1, total)
-	local accumulated = 0
+	-- local roll = math.random(1, total)
+	-- local accumulated = 0
 
-	for _, entry in ipairs(self.MutationChances) do
-		accumulated = accumulated + entry.Weight
-		if roll <= accumulated then
-			return entry.Mutation
-		end
-	end
+	-- for _, entry in ipairs(self.MutationChances) do
+	-- 	accumulated = accumulated + entry.Weight
+	-- 	if roll <= accumulated then
+	-- 		return entry.Mutation
+	-- 	end
+	-- end
 
-	return "Normal" -- Fallback
+	-- return "Normal" -- Fallback
 end
 
 -- Helper to roll a random skin from a box (weighted)
