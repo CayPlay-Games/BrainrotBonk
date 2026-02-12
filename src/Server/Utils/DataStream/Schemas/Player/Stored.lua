@@ -47,5 +47,17 @@ return {
 		LastRankRewarded = 0, -- Highest rank index that rewards have been given for
 	},
 
+	Stats = {
+		CurrenciesGained = {
+			Coins = 0, -- Total coins earned (lifetime)
+		},
+	},
+
 	Spins = 0, -- Number of spins available
+
+	DailyRewards = {
+		CurrentDay = 1, -- Current day to claim (1-7)
+		LastClaimTime = 0, -- os.time() of last claim (0 = never claimed)
+		CycleCount = 1, -- Which cycle we're on (determines Day 7 skin)
+	},
 }

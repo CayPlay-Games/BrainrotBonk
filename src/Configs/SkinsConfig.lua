@@ -103,38 +103,51 @@ return TableHelper:DeepFreeze({
 		FluriFlura = {
 			DisplayName = "Fluri Flura",
 			Description = "Fluri Flura Skin",
-			Rarity = "Common",
+			Rarity = Rarities.Common.Name,
 			ModelName = "FluriFlura",
+			Icon = "rbxassetid://5902417546"
 		},
 		LiriliLarila = {
 			DisplayName = "Lirili Larila",
 			Description = "Lirili Larila Skin",
-			Rarity = "Common",
+			Rarity = Rarities.Common.Name,
 			ModelName = "LiriliLarila",
+			Icon = "rbxassetid://5902417546"
 		},
 		TimCheese = {
 			DisplayName = "Tim Cheese",
 			Description = "Tim Cheese Skin",
-			Rarity = "Common",
+			Rarity = Rarities.Common.Name,
 			ModelName = "TimCheese",
+			Icon = "rbxassetid://5902417546"
 		},
 		TalpaDiFero = {
 			DisplayName = "Talpa Di Fero",
 			Description = "Talpa Di Fero Skin",
-			Rarity = "Common",
+			Rarity = Rarities.Common.Name,
 			ModelName = "TalpaDiFero",
+			Icon = "rbxassetid://5902417546"
 		},
 		SvininaBombardino = {
 			DisplayName = "Svinina Bombardino",
 			Description = "Svinina Bombardino Skin",
-			Rarity = "Common",
+			Rarity = Rarities.Common.Name,
 			ModelName = "SvininaBombardino",
+			Icon = "rbxassetid://5902417546"
 		},
 		PipiKiwi = {
 			DisplayName = "Pipi Kiwi",
 			Description = "Pipi Kiwi Skin",
-			Rarity = "Common",
+			Rarity = Rarities.Common.Name,
 			ModelName = "PipiKiwi",
+			Icon = "rbxassetid://5902417546"
+		},
+		KarkerkarKurkur = {
+			DisplayName = "Karkerkar Kurkur",
+			Description = "Karkerkar Kurkur Skin",
+			Rarity = Rarities.Legendary.Name,
+			ModelName = "KarkerkarKurkur",
+			Icon = "rbxassetid://5902417546"
 		},
 
 		-- Add more skins here as they're created:
