@@ -71,7 +71,7 @@ end
 local function DisplaySkinInViewport(viewport, skinId, mutation, camera)
 	-- Clear existing models
 	for _, child in viewport:GetChildren() do
-		if child:IsA("Model") then
+		if child:IsA("Model") or child:IsA("Folder") then
 			child:Destroy()
 		end
 	end
@@ -82,23 +82,34 @@ local function DisplaySkinInViewport(viewport, skinId, mutation, camera)
 	local skinConfig = SkinsConfig.Skins[skinId]
 	if not skinConfig then return nil end
 
-	-- Try nested structure: Skins/Fluriflura/Normal
 	local skinFolder = SkinsFolder:FindFirstChild(skinConfig.ModelName)
 	local previewModel = nil
 
 	if skinFolder and skinFolder:IsA("Folder") then
-		-- Look for mutation-specific model
-		previewModel = skinFolder:FindFirstChild(mutation)
+		-- Try mutation-specific variant first (e.g., Skins/FluriFlura/Normal)
+		local mutationAsset = skinFolder:FindFirstChild(mutation)
 
-		-- Fallback to Normal if mutation not found
-		if not previewModel and mutation ~= "Normal" then
-			previewModel = skinFolder:FindFirstChild("Normal")
+		-- Fallback to Normal if specific mutation not found
+		if not mutationAsset and mutation ~= "Normal" then
+			mutationAsset = skinFolder:FindFirstChild("Normal")
 		end
-	end
 
-	-- Legacy fallback: flat structure
-	if not previewModel then
-		previewModel = SkinsFolder:FindFirstChild(skinConfig.ModelName)
+		-- If found mutation asset, check if it's a Folder containing a Model
+		if mutationAsset then
+			if mutationAsset:IsA("Folder") then
+				previewModel = mutationAsset:FindFirstChildWhichIsA("Model")
+			elseif mutationAsset:IsA("Model") then
+				previewModel = mutationAsset
+			end
+		end
+
+		-- If no mutation subfolder, look for Model directly in skin folder
+		if not previewModel then
+			previewModel = skinFolder:FindFirstChildWhichIsA("Model")
+		end
+	elseif skinFolder and skinFolder:IsA("Model") then
+		-- Skin folder is actually a Model (legacy flat structure)
+		previewModel = skinFolder
 	end
 
 	if not previewModel then return nil end

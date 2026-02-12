@@ -50,7 +50,7 @@ local _PlayerStoredDataStream = nil
 local SIDEBAR_TABS = {
 	{ name = "NormalTab", mutation = "Normal" },
 	{ name = "LavaTab", mutation = "Lava" },
-	{ name = "GoldTab", mutation = "Gold" },
+	{ name = "GoldenTab", mutation = "Golden" },
 	{ name = "DiamondTab", mutation = "Diamond" },
 	{ name = "RainbowTab", mutation = "Rainbow" },
 	{ name = "GalaxyTab", mutation = "Galaxy" },
@@ -184,7 +184,7 @@ end
 local function DisplaySkinInViewport(viewport, skinId, camera)
 	-- Clear existing models
 	for _, child in viewport:GetChildren() do
-		if child:IsA("Model") then
+		if child:IsA("Model") or child:IsA("Folder") then
 			child:Destroy()
 		end
 	end
@@ -192,7 +192,31 @@ local function DisplaySkinInViewport(viewport, skinId, camera)
 	local skinConfig = SkinsConfig.Skins[skinId]
 	if not skinConfig then return nil end
 
-	local previewModel = SkinsFolder:FindFirstChild(skinConfig.ModelName)
+	local skinFolder = SkinsFolder:FindFirstChild(skinConfig.ModelName)
+	if not skinFolder then return nil end
+
+	local previewModel = nil
+
+	if skinFolder:IsA("Folder") then
+		-- Try to find "Normal" variant first (for index, show default variant)
+		local normalAsset = skinFolder:FindFirstChild("Normal")
+		if normalAsset then
+			if normalAsset:IsA("Folder") then
+				previewModel = normalAsset:FindFirstChildWhichIsA("Model")
+			elseif normalAsset:IsA("Model") then
+				previewModel = normalAsset
+			end
+		end
+
+		-- If no Normal variant, look for Model directly in skin folder
+		if not previewModel then
+			previewModel = skinFolder:FindFirstChildWhichIsA("Model")
+		end
+	elseif skinFolder:IsA("Model") then
+		-- Legacy: skin folder is actually a Model
+		previewModel = skinFolder
+	end
+
 	if not previewModel then return nil end
 
 	local clone = ViewportHelper.DisplayModel(viewport, previewModel, camera)

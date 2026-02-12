@@ -9,6 +9,17 @@
 
 local SkinBoxesConfig = {}
 
+-- Mutation roll chances (must add up to 100)
+-- When a skin is rolled, a separate roll determines the mutation
+SkinBoxesConfig.MutationChances = {
+	{ Mutation = "Normal", Weight = 70 },   -- 70% chance
+	{ Mutation = "Lava", Weight = 12 },     -- 12% chance
+	{ Mutation = "Golden", Weight = 10 },   -- 10% chance
+	{ Mutation = "Diamond", Weight = 5 },   -- 5% chance
+	{ Mutation = "Rainbow", Weight = 2 },   -- 2% chance
+	{ Mutation = "Galaxy", Weight = 1 },    -- 1% chance
+}
+
 -- Skin boxes available for purchase
 -- SkinId must match a key in SkinsConfig.Skins
 SkinBoxesConfig.Boxes = {
@@ -19,7 +30,8 @@ SkinBoxesConfig.Boxes = {
 		RobuxPrice = 75,
 		CoinsPrice = 9,
 		Skins = {
-			{ SkinId = "Fluriflura", Weight = 100 },
+			{ SkinId = "SvininaBombardino", Weight = 50 },
+			{ SkinId = "PipiKiwi", Weight = 50 },
 		},
 	},
 	TestBoxTwo = {
@@ -29,7 +41,7 @@ SkinBoxesConfig.Boxes = {
 		RobuxPrice = 150,
 		CoinsPrice = 19,
 		Skins = {
-			{ SkinId = "Fluriflura", Weight = 100 },
+			{ SkinId = "FluriFlura", Weight = 100 },
 		},
 	},
 }
@@ -59,13 +71,34 @@ function SkinBoxesConfig:GetOdds(boxId, skinId)
 	return 0
 end
 
+-- Helper to roll a random mutation based on MutationChances
+function SkinBoxesConfig:RollMutation()
+	local total = 0
+	for _, entry in ipairs(self.MutationChances) do
+		total = total + entry.Weight
+	end
+
+	local roll = math.random(1, total)
+	local accumulated = 0
+
+	for _, entry in ipairs(self.MutationChances) do
+		accumulated = accumulated + entry.Weight
+		if roll <= accumulated then
+			return entry.Mutation
+		end
+	end
+
+	return "Normal" -- Fallback
+end
+
 -- Helper to roll a random skin from a box (weighted)
+-- Returns: skinId, mutation
 function SkinBoxesConfig:RollSkin(boxId)
 	local box = self.Boxes[boxId]
-	if not box then return nil end
+	if not box then return nil, nil end
 
 	local total = self:GetTotalWeight(boxId)
-	if total == 0 then return nil end
+	if total == 0 then return nil, nil end
 
 	local roll = math.random(1, total)
 	local accumulated = 0
@@ -73,12 +106,15 @@ function SkinBoxesConfig:RollSkin(boxId)
 	for _, skin in ipairs(box.Skins) do
 		accumulated = accumulated + skin.Weight
 		if roll <= accumulated then
-			return skin.SkinId
+			local mutation = self:RollMutation()
+			print(string.format("Rolled skin '%s' with mutation '%s' from box '%s'", skin.SkinId, mutation, boxId))
+			return skin.SkinId, mutation
 		end
 	end
 
 	-- Fallback (should never reach)
-	return box.Skins[1] and box.Skins[1].SkinId
+	local skinId = box.Skins[1] and box.Skins[1].SkinId
+	return skinId, "Normal"
 end
 
 return SkinBoxesConfig

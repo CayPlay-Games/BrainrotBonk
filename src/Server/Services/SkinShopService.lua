@@ -53,16 +53,24 @@ local function CanAfford(player, boxId, currencyType)
 	return true
 end
 
--- Awards a skin to the player
--- Returns true if skin was new, false if already owned
-local function AwardSkin(player, skinId)
+-- Awards a skin + mutation to the player
+-- Returns: isNewSkin, isNewMutation
+local function AwardSkin(player, skinId, mutation)
+	mutation = mutation or "Normal"
+
 	local stored = DataStream.Stored[player]
-	if not stored then return false end
+	if not stored then return false, false end
 
 	-- Check if skin exists in config
 	if not SkinsConfig.Skins[skinId] then
 		DebugLog("Skin not found in config:", skinId)
-		return false
+		return false, false
+	end
+
+	-- Check if mutation exists in config
+	if not SkinsConfig.Mutations[mutation] then
+		DebugLog("Mutation not found in config:", mutation)
+		mutation = "Normal"
 	end
 
 	local collected = stored.Skins.Collected:Read() or {}
@@ -79,18 +87,37 @@ local function AwardSkin(player, skinId)
 	end
 
 	if existingEntry then
-		-- Already owns skin - could add mutation in future
-		DebugLog(player.Name, "already owns skin:", skinId)
-		return false
+		-- Already owns skin - check if mutation is new
+		local hasMutation = false
+		for _, existingMutation in ipairs(existingEntry.Mutations or {}) do
+			if existingMutation == mutation then
+				hasMutation = true
+				break
+			end
+		end
+
+		if hasMutation then
+			-- Already has this mutation
+			DebugLog(player.Name, "already owns skin:", skinId, "with mutation:", mutation)
+			return false, false
+		else
+			-- Add new mutation to existing skin
+			existingEntry.Mutations = existingEntry.Mutations or {}
+			table.insert(existingEntry.Mutations, mutation)
+			collected[existingIndex] = existingEntry
+			stored.Skins.Collected = collected
+			DebugLog(player.Name, "awarded new mutation:", mutation, "for skin:", skinId)
+			return false, true
+		end
 	else
-		-- Add new skin with Normal mutation
+		-- Add new skin with the rolled mutation
 		table.insert(collected, {
 			SkinId = skinId,
-			Mutations = { "Normal" },
+			Mutations = { mutation },
 		})
 		stored.Skins.Collected = collected
-		DebugLog(player.Name, "awarded new skin:", skinId)
-		return true
+		DebugLog(player.Name, "awarded new skin:", skinId, "with mutation:", mutation)
+		return true, true
 	end
 end
 
@@ -116,8 +143,8 @@ local function HandleCoinPurchase(player, boxId)
 		return false, nil
 	end
 
-	-- Roll random skin
-	local skinId = SkinBoxesConfig:RollSkin(boxId)
+	-- Roll random skin and mutation
+	local skinId, mutation = SkinBoxesConfig:RollSkin(boxId)
 	if not skinId then
 		-- Refund if roll failed (shouldn't happen)
 		CollectionsService:GiveCurrency(
@@ -128,15 +155,16 @@ local function HandleCoinPurchase(player, boxId)
 			"SkinBox_" .. boxId .. "_Refund"
 		)
 		DebugLog("Roll failed for box:", boxId)
-		return false, nil
+		return false, nil, nil
 	end
 
-	-- Award skin
-	local isNew = AwardSkin(player, skinId)
+	-- Award skin with mutation
+	local isNewSkin, isNewMutation = AwardSkin(player, skinId, mutation)
 
-	print("[SkinShopService]", player.Name, "rolled", skinId, "from", boxId, isNew and "(NEW!)" or "(duplicate)")
+	local statusText = isNewSkin and "(NEW SKIN!)" or (isNewMutation and "(NEW MUTATION!)" or "(duplicate)")
+	print("[SkinShopService]", player.Name, "rolled", skinId, mutation, "from", boxId, statusText)
 
-	return true, skinId
+	return true, skinId, mutation
 end
 
 -- Handles purchase request from client
@@ -158,7 +186,7 @@ local function OnPurchaseRequest(player, boxId, currencyType)
 
 	if currencyType == "Coins" then
 		-- Handle coin purchase directly
-		local success, skinId = HandleCoinPurchase(player, boxId)
+		local success, skinId, mutation = HandleCoinPurchase(player, boxId)
 
 		-- Notify client of result (for future animation)
 		if success and skinId then
@@ -166,6 +194,7 @@ local function OnPurchaseRequest(player, boxId, currencyType)
 				Success = true,
 				BoxId = boxId,
 				SkinId = skinId,
+				Mutation = mutation,
 			})
 		else
 			SkinBoxResultRemoteEvent:FireClient(player, {

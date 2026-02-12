@@ -59,7 +59,7 @@ local Mutations = {
 		Color = Color3.fromRGB(255, 80, 20),
 		SortOrder = 2,
 	},
-	Gold = {
+	Golden = {
 		Name = "Golden",
 		Color = Color3.fromRGB(255, 200, 50),
 		SortOrder = 3,
@@ -86,7 +86,7 @@ return TableHelper:DeepFreeze({
 	SKINS_FOLDER_NAME = "Skins",
 
 	-- Default skin applied to all players (until unlock system)
-	DEFAULT_SKIN = "Fluriflura",
+	DEFAULT_SKIN = "FluriFlura",
 
 	-- Rarity definitions
 	Rarities = Rarities,
@@ -96,13 +96,47 @@ return TableHelper:DeepFreeze({
 
 	-- Available skins
 	Skins = {
-		Fluriflura = {
-			DisplayName = "Fluriflura",
-			Description = "Fluriflura Skin",
+		--TODO: Perhaps sort into subtables by rarity
+		-- ==================== --
+		-- ====== COMMON ====== --
+		-- ==================== --
+		FluriFlura = {
+			DisplayName = "Fluri Flura",
+			Description = "Fluri Flura Skin",
 			Rarity = "Common",
-			-- Model name in ServerStorage.Skins
-			ModelName = "Fluriflura",
+			ModelName = "FluriFlura",
 		},
+		LiriliLarila = {
+			DisplayName = "Lirili Larila",
+			Description = "Lirili Larila Skin",
+			Rarity = "Common",
+			ModelName = "LiriliLarila",
+		},
+		TimCheese = {
+			DisplayName = "Tim Cheese",
+			Description = "Tim Cheese Skin",
+			Rarity = "Common",
+			ModelName = "TimCheese",
+		},
+		TalpaDiFero = {
+			DisplayName = "Talpa Di Fero",
+			Description = "Talpa Di Fero Skin",
+			Rarity = "Common",
+			ModelName = "TalpaDiFero",
+		},
+		SvininaBombardino = {
+			DisplayName = "Svinina Bombardino",
+			Description = "Svinina Bombardino Skin",
+			Rarity = "Common",
+			ModelName = "SvininaBombardino",
+		},
+		PipiKiwi = {
+			DisplayName = "Pipi Kiwi",
+			Description = "Pipi Kiwi Skin",
+			Rarity = "Common",
+			ModelName = "PipiKiwi",
+		},
+
 		-- Add more skins here as they're created:
 		-- Skibidi = {
 		-- 	DisplayName = "Skibidi",

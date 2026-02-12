@@ -54,6 +54,7 @@ local function CreatePhysicsBox(player, spawnCFrame)
 	rootPart.BottomSurface = Enum.SurfaceType.Smooth
 	rootPart.CanCollide = true
 	rootPart.Anchored = false
+	rootPart.Transparency = 0.8
 	rootPart.CFrame = spawnCFrame
 
 	-- Set physics properties (high friction so it doesn't slide on its own - LinearVelocity controls movement)
