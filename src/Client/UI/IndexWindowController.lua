@@ -49,9 +49,11 @@ local _PlayerStoredDataStream = nil
 -- Sidebar tab configuration
 local SIDEBAR_TABS = {
 	{ name = "NormalTab", mutation = "Normal" },
+	{ name = "LavaTab", mutation = "Lava" },
 	{ name = "GoldTab", mutation = "Gold" },
 	{ name = "DiamondTab", mutation = "Diamond" },
 	{ name = "RainbowTab", mutation = "Rainbow" },
+	{ name = "GalaxyTab", mutation = "Galaxy" },
 }
 
 -- Internal Functions --

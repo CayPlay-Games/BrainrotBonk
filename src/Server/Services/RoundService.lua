@@ -532,7 +532,9 @@ local function EnterSpawning()
 		local physicsBox = SkinService:CreatePhysicsCharacter(player, spawnCFrame)
 
 		-- Attach cosmetic skin to the physics box
-		SkinService:AttachSkin(physicsBox, SkinService:GetPlayerSkin(player))
+		local skinId = SkinService:GetPlayerSkin(player)
+		local mutation = SkinService:GetPlayerSkinMutation(player)
+		SkinService:AttachSkin(physicsBox, skinId, mutation)
 	end
 
 	-- Spawn dummy player for testing in DEBUG_MODE

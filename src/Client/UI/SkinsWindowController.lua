@@ -68,7 +68,7 @@ local function SetupViewportCamera(viewport)
 end
 
 -- Displays a skin model in the viewport
-local function DisplaySkinInViewport(viewport, skinId, camera)
+local function DisplaySkinInViewport(viewport, skinId, mutation, camera)
 	-- Clear existing models
 	for _, child in viewport:GetChildren() do
 		if child:IsA("Model") then
@@ -76,11 +76,31 @@ local function DisplaySkinInViewport(viewport, skinId, camera)
 		end
 	end
 
+	mutation = mutation or "Normal"
+
 	-- Get skin preview model
 	local skinConfig = SkinsConfig.Skins[skinId]
 	if not skinConfig then return nil end
 
-	local previewModel = SkinsFolder:FindFirstChild(skinConfig.ModelName)
+	-- Try nested structure: Skins/Fluriflura/Normal
+	local skinFolder = SkinsFolder:FindFirstChild(skinConfig.ModelName)
+	local previewModel = nil
+
+	if skinFolder and skinFolder:IsA("Folder") then
+		-- Look for mutation-specific model
+		previewModel = skinFolder:FindFirstChild(mutation)
+
+		-- Fallback to Normal if mutation not found
+		if not previewModel and mutation ~= "Normal" then
+			previewModel = skinFolder:FindFirstChild("Normal")
+		end
+	end
+
+	-- Legacy fallback: flat structure
+	if not previewModel then
+		previewModel = SkinsFolder:FindFirstChild(skinConfig.ModelName)
+	end
+
 	if not previewModel then return nil end
 
 	-- Use ViewportHelper to display with auto-calculated distance
@@ -132,7 +152,7 @@ local function UpdatePreview(skinId, mutation)
 	if _CurrentPreviewModel then
 		_CurrentPreviewModel:Destroy()
 	end
-	_CurrentPreviewModel = DisplaySkinInViewport(_PreviewViewport, skinId, _PreviewViewport.CurrentCamera)
+	_CurrentPreviewModel = DisplaySkinInViewport(_PreviewViewport, skinId, _SelectedMutation, _PreviewViewport.CurrentCamera)
 
 	-- Update equip button
 	if skinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation then
@@ -194,7 +214,7 @@ local function CreateSkinCard(skinId, mutation)
 	local viewport = card:FindFirstChild("SkinViewport")
 	if viewport then
 		local camera = SetupViewportCamera(viewport)
-		DisplaySkinInViewport(viewport, skinId, camera)
+		DisplaySkinInViewport(viewport, skinId, mutation, camera)
 	end
 
 	-- Update visual properties (background color, name, etc.)
