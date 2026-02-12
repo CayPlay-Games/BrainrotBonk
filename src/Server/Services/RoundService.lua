@@ -71,6 +71,8 @@ local _DummyPlayers = {} -- DummyId -> { Character, Name, UserId }
 local _NextDummyId = 1
 -- Spawn directions for dummies (Dummy -> Vector3)
 local _DummySpawnDirections = {}
+-- Map loaded during countdown (for seamless transition)
+local _MapLoadedDuringCountdown = false
 
 -- Public Variables / Signals --
 RoundService.StateChanged = Signal.new() -- (newState, oldState)
@@ -331,6 +333,40 @@ local function EnterWaiting()
 	-- Helper to start countdown with player monitoring
 	local function StartCountdownWithMonitoring()
 		DebugLog("Enough players, starting countdown")
+
+		-- Delay map selection until 5 seconds before countdown ends
+		local mapSelectionDelay = math.max(0, RoundConfig.Timers.WAITING_COUNTDOWN - 5)
+		_MapLoadedDuringCountdown = false
+
+		task.delay(mapSelectionDelay, function()
+			-- Only proceed if still in Waiting state
+			if _CurrentState ~= States.Waiting then return end
+			if not CanStartRound() then return end
+
+			-- Select map and show notification (triggers client roulette animation)
+			local mapId = MapsConfig.DEFAULT_MAP
+			local mapConfig = MapsConfig.Maps[mapId]
+			DataStream.RoundState.CurrentMapId = mapId
+			DataStream.RoundState.CurrentMapName = mapConfig and mapConfig.DisplayName or mapId
+			DebugLog("Map selected, showing notification:", mapId)
+
+			-- Delay map loading to let roulette animation play (3 seconds)
+			task.delay(3, function()
+				-- Only proceed if still in Waiting state
+				if _CurrentState ~= States.Waiting then return end
+				if not CanStartRound() then return end
+
+				MapService:LoadMap(mapId):andThen(function(spawnPoints)
+					_CurrentSpawnPoints = spawnPoints
+					_MapLoadedDuringCountdown = true
+					DebugLog("Map loaded during countdown:", mapId)
+				end):catch(function(err)
+					warn("[RoundService] Failed to load map during countdown:", err)
+					_MapLoadedDuringCountdown = false
+				end)
+			end)
+		end)
+
 		StartTimer(RoundConfig.Timers.WAITING_COUNTDOWN, function()
 			-- Clean up monitoring connection
 			if _CountdownCheckConnection then
@@ -338,8 +374,23 @@ local function EnterWaiting()
 				_CountdownCheckConnection = nil
 			end
 			if CanStartRound() then
-				TransitionTo(States.MapLoading)
+				if _MapLoadedDuringCountdown then
+					-- Map already loaded, skip MapLoading state
+					_MapLoadedDuringCountdown = false
+					TransitionTo(States.Spawning)
+				else
+					-- Fallback to MapLoading if load failed
+					TransitionTo(States.MapLoading)
+				end
 			else
+				-- Not enough players, cleanup and restart
+				if _MapLoadedDuringCountdown then
+					MapService:UnloadCurrentMap()
+					_CurrentSpawnPoints = {}
+					_MapLoadedDuringCountdown = false
+					DataStream.RoundState.CurrentMapId = nil
+					DataStream.RoundState.CurrentMapName = ""
+				end
 				TransitionTo(States.Waiting)
 			end
 		end)
@@ -352,12 +403,22 @@ local function EnterWaiting()
 				return
 			end
 
-			-- If not enough players, cancel countdown and restart waiting
+			-- If not enough players, cancel countdown, unload map, and restart waiting
 			if not CanStartRound() then
 				DebugLog("Not enough players, cancelling countdown")
 				_CountdownCheckConnection:Disconnect()
 				_CountdownCheckConnection = nil
 				ClearTimer()
+
+				-- Unload map if it was loaded during countdown
+				if _MapLoadedDuringCountdown then
+					MapService:UnloadCurrentMap()
+					_CurrentSpawnPoints = {}
+					_MapLoadedDuringCountdown = false
+					DataStream.RoundState.CurrentMapId = nil
+					DataStream.RoundState.CurrentMapName = ""
+				end
+
 				TransitionTo(States.Waiting)
 			end
 		end)

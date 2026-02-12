@@ -20,7 +20,7 @@ return TableHelper:DeepFreeze({
 
 	-- Phase durations (seconds)
 	Timers = {
-		WAITING_COUNTDOWN = 5, -- Time after min players reached before starting
+		WAITING_COUNTDOWN = 15, -- Time after min players reached before starting
 		MAP_LOADING_TIMEOUT = 10, -- Max time to wait for map load
 		SPAWNING_DURATION = 5,
 		AIMING_DURATION = 5,
@@ -28,7 +28,7 @@ return TableHelper:DeepFreeze({
 		LAUNCHING_DURATION = 0.5, -- Brief delay after applying forces
 		RESOLUTION_TIMEOUT = 10, -- Max time waiting for physics to settle
 		ROUND_END_DURATION = 5,
-		INTERMISSION_DURATION = 5,
+		INTERMISSION_DURATION = 15,
 	},
 
 	-- Aim settings
