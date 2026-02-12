@@ -32,6 +32,8 @@ local _OpenWindows = {} -- windowName -> true
 local _WindowConfigs = {} -- windowName -> { ScreenGui, MainFrame, UIScale, CloseButton }
 local _BlurEffect = nil
 local _HUDScreenGui = nil
+local _PendingCallbacks = {} -- windowName -> { callback1, callback2, ... }
+local _ChildAddedConnection = nil
 
 -- Internal Functions --
 
@@ -130,7 +132,39 @@ local function SetupWindow(windowName)
 	return _WindowConfigs[windowName]
 end
 
+-- Sets up the ChildAdded listener (only once)
+local function EnsureChildAddedListener()
+	if _ChildAddedConnection then return end
+
+	_ChildAddedConnection = PlayerGui.ChildAdded:Connect(function(child)
+		local callbacks = _PendingCallbacks[child.Name]
+		if callbacks then
+			_PendingCallbacks[child.Name] = nil
+			for _, callback in ipairs(callbacks) do
+				task.spawn(callback, child)
+			end
+		end
+	end)
+end
+
 -- API Functions --
+
+function UIController:WhenScreenGuiReady(windowName, callback)
+	-- Try to find immediately
+	local screenGui = PlayerGui:FindFirstChild(windowName)
+	if screenGui then
+		task.spawn(callback, screenGui)
+		return
+	end
+
+	-- Queue callback for when child is added
+	if not _PendingCallbacks[windowName] then
+		_PendingCallbacks[windowName] = {}
+	end
+	table.insert(_PendingCallbacks[windowName], callback)
+
+	EnsureChildAddedListener()
+end
 
 function UIController:OpenWindow(windowName)
 	-- Get or setup window config

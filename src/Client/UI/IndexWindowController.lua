@@ -11,19 +11,17 @@
 local IndexWindowController = {}
 
 -- Roblox Services --
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies --
 local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
+local UIController = shared("UIController")
 local SkinsConfig = shared("SkinsConfig")
 local RoundConfig = shared("RoundConfig")
 local ViewportHelper = shared("ViewportHelper")
 
 -- Object References --
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui
-local SkinsFolder
+local SkinsFolder = nil
 
 -- Private Variables --
 local _ScreenGui = nil
@@ -402,13 +400,12 @@ local function SetupTopTabs()
 end
 
 -- Sets up UI references
-local function SetupUI()
+local function SetupUI(screenGui)
 	if _IsSetup then return end
 
-	PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 	SkinsFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Skins")
 
-	_ScreenGui = PlayerGui:WaitForChild("IndexWindow")
+	_ScreenGui = screenGui
 	local mainFrame = _ScreenGui:WaitForChild("MainFrame")
 	local content = mainFrame:WaitForChild("Content")
 
@@ -471,15 +468,17 @@ function IndexWindowController:Init()
 	OnLocalPlayerStoredDataStreamLoaded(function(PlayerStoredDataStream)
 		_PlayerStoredDataStream = PlayerStoredDataStream
 
-		SetupUI()
+		UIController:WhenScreenGuiReady("IndexWindow", function(screenGui)
+			SetupUI(screenGui)
 
-		-- Listen for collection changes
-		_PlayerStoredDataStream.Skins.Collected:Changed(function()
+			-- Listen for collection changes
+			_PlayerStoredDataStream.Skins.Collected:Changed(function()
+				PopulateGrid()
+			end)
+
+			-- Initial population
 			PopulateGrid()
 		end)
-
-		-- Initial population
-		PopulateGrid()
 	end)
 end
 

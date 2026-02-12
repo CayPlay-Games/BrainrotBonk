@@ -10,11 +10,11 @@
 local SkinShopWindowController = {}
 
 -- Roblox Services --
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies --
 local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
+local UIController = shared("UIController")
 local SkinBoxesConfig = shared("SkinBoxesConfig")
 local SkinsConfig = shared("SkinsConfig")
 local GetRemoteEvent = shared("GetRemoteEvent")
@@ -25,9 +25,7 @@ local ViewportHelper = shared("ViewportHelper")
 local PurchaseSkinBoxRemoteEvent = GetRemoteEvent("PurchaseSkinBox")
 
 -- Object References --
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui
-local SkinsFolder
+local SkinsFolder = nil
 
 -- Private Variables --
 local _ScreenGui = nil
@@ -305,13 +303,12 @@ local function UpdateCurrencyDisplay()
 end
 
 -- Sets up UI references
-local function SetupUI()
+local function SetupUI(screenGui)
 	if _IsSetup then return end
 
-	PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 	SkinsFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Skins")
 
-	_ScreenGui = PlayerGui:WaitForChild("SkinShopWindow")
+	_ScreenGui = screenGui
 	local mainFrame = _ScreenGui:WaitForChild("MainFrame")
 
 	-- SkinBlocks scroll
@@ -348,16 +345,18 @@ function SkinShopWindowController:Init()
 	OnLocalPlayerStoredDataStreamLoaded(function(PlayerStoredDataStream)
 		_PlayerStoredDataStream = PlayerStoredDataStream
 
-		SetupUI()
+		UIController:WhenScreenGuiReady("SkinShopWindow", function(screenGui)
+			SetupUI(screenGui)
 
-		-- Listen for currency changes
-		_PlayerStoredDataStream.Collections.Currencies.Coins:Changed(function()
+			-- Listen for currency changes
+			_PlayerStoredDataStream.Collections.Currencies.Coins:Changed(function()
+				UpdateCurrencyDisplay()
+			end)
+
+			-- Initial population
+			PopulateBoxes()
 			UpdateCurrencyDisplay()
 		end)
-
-		-- Initial population
-		PopulateBoxes()
-		UpdateCurrencyDisplay()
 	end)
 end
 

@@ -10,11 +10,11 @@
 local SkinsWindowController = {}
 
 -- Roblox Services --
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies --
 local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
+local UIController = shared("UIController")
 local SkinsConfig = shared("SkinsConfig")
 local GetRemoteEvent = shared("GetRemoteEvent")
 local RoundConfig = shared("RoundConfig")
@@ -24,9 +24,7 @@ local ViewportHelper = shared("ViewportHelper")
 local EquipSkinRemoteEvent = GetRemoteEvent("EquipSkin")
 
 -- Object References --
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui --= LocalPlayer:WaitForChild("PlayerGui")
-local SkinsFolder --= ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Skins")
+local SkinsFolder = nil
 
 -- Private Variables --
 local _ScreenGui = nil
@@ -300,13 +298,12 @@ local function PopulateGrid()
 end
 
 -- Sets up UI references and handlers
-local function SetupUI()
+local function SetupUI(screenGui)
 	if _IsSetup then return end
 
-	PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 	SkinsFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Skins")
 
-	_ScreenGui = PlayerGui:WaitForChild("SkinsWindow")
+	_ScreenGui = screenGui
 	local mainFrame = _ScreenGui:WaitForChild("MainFrame")
 	local contentArea = mainFrame:WaitForChild("ContentArea")
 
@@ -353,40 +350,42 @@ function SkinsWindowController:Init()
 	OnLocalPlayerStoredDataStreamLoaded(function(PlayerStoredDataStream)
 		_PlayerStoredDataStream = PlayerStoredDataStream
 
-		SetupUI()
+		UIController:WhenScreenGuiReady("SkinsWindow", function(screenGui)
+			SetupUI(screenGui)
 
-		-- Listen for skin changes
-		_PlayerStoredDataStream.Skins.Equipped:Changed(function(newEquipped)
-			_EquippedSkinId = newEquipped
-			UpdateEquippedIndicators()
+			-- Listen for skin changes
+			_PlayerStoredDataStream.Skins.Equipped:Changed(function(newEquipped)
+				_EquippedSkinId = newEquipped
+				UpdateEquippedIndicators()
 
-			-- Update equip button if viewing this skin+mutation combo
-			local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
-			if isNowEquipped then
-				_EquipButton.Text = "Equipped"
-				_EquipButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-			end
-		end)
+				-- Update equip button if viewing this skin+mutation combo
+				local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
+				if isNowEquipped then
+					_EquipButton.Text = "Equipped"
+					_EquipButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+				end
+			end)
 
-		_PlayerStoredDataStream.Skins.EquippedMutation:Changed(function(newMutation)
-			_EquippedMutation = newMutation
-			UpdateEquippedIndicators()
+			_PlayerStoredDataStream.Skins.EquippedMutation:Changed(function(newMutation)
+				_EquippedMutation = newMutation
+				UpdateEquippedIndicators()
 
-			-- Update equip button if viewing this skin+mutation combo
-			local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
-			if isNowEquipped then
-				_EquipButton.Text = "Equipped"
-				_EquipButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-			end
-		end)
+				-- Update equip button if viewing this skin+mutation combo
+				local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
+				if isNowEquipped then
+					_EquipButton.Text = "Equipped"
+					_EquipButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+				end
+			end)
 
-		-- Listen for collection changes (new skins unlocked)
-		_PlayerStoredDataStream.Skins.Collected:Changed(function()
+			-- Listen for collection changes (new skins unlocked)
+			_PlayerStoredDataStream.Skins.Collected:Changed(function()
+				PopulateGrid()
+			end)
+
+			-- Initial population
 			PopulateGrid()
 		end)
-
-		-- Initial population
-		PopulateGrid()
 	end)
 end
 
