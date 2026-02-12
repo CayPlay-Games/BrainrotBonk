@@ -68,19 +68,50 @@ local function SetupViewportCamera(viewport)
 end
 
 -- Displays a skin model in the viewport
-local function DisplaySkinInViewport(viewport, skinId, camera)
+local function DisplaySkinInViewport(viewport, skinId, mutation, camera)
 	-- Clear existing models
 	for _, child in viewport:GetChildren() do
-		if child:IsA("Model") then
+		if child:IsA("Model") or child:IsA("Folder") then
 			child:Destroy()
 		end
 	end
+
+	mutation = mutation or "Normal"
 
 	-- Get skin preview model
 	local skinConfig = SkinsConfig.Skins[skinId]
 	if not skinConfig then return nil end
 
-	local previewModel = SkinsFolder:FindFirstChild(skinConfig.ModelName)
+	local skinFolder = SkinsFolder:FindFirstChild(skinConfig.ModelName)
+	local previewModel = nil
+
+	if skinFolder and skinFolder:IsA("Folder") then
+		-- Try mutation-specific variant first (e.g., Skins/FluriFlura/Normal)
+		local mutationAsset = skinFolder:FindFirstChild(mutation)
+
+		-- Fallback to Normal if specific mutation not found
+		if not mutationAsset and mutation ~= "Normal" then
+			mutationAsset = skinFolder:FindFirstChild("Normal")
+		end
+
+		-- If found mutation asset, check if it's a Folder containing a Model
+		if mutationAsset then
+			if mutationAsset:IsA("Folder") then
+				previewModel = mutationAsset:FindFirstChildWhichIsA("Model")
+			elseif mutationAsset:IsA("Model") then
+				previewModel = mutationAsset
+			end
+		end
+
+		-- If no mutation subfolder, look for Model directly in skin folder
+		if not previewModel then
+			previewModel = skinFolder:FindFirstChildWhichIsA("Model")
+		end
+	elseif skinFolder and skinFolder:IsA("Model") then
+		-- Skin folder is actually a Model (legacy flat structure)
+		previewModel = skinFolder
+	end
+
 	if not previewModel then return nil end
 
 	-- Use ViewportHelper to display with auto-calculated distance
@@ -132,7 +163,7 @@ local function UpdatePreview(skinId, mutation)
 	if _CurrentPreviewModel then
 		_CurrentPreviewModel:Destroy()
 	end
-	_CurrentPreviewModel = DisplaySkinInViewport(_PreviewViewport, skinId, _PreviewViewport.CurrentCamera)
+	_CurrentPreviewModel = DisplaySkinInViewport(_PreviewViewport, skinId, _SelectedMutation, _PreviewViewport.CurrentCamera)
 
 	-- Update equip button
 	if skinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation then
@@ -194,7 +225,7 @@ local function CreateSkinCard(skinId, mutation)
 	local viewport = card:FindFirstChild("SkinViewport")
 	if viewport then
 		local camera = SetupViewportCamera(viewport)
-		DisplaySkinInViewport(viewport, skinId, camera)
+		DisplaySkinInViewport(viewport, skinId, mutation, camera)
 	end
 
 	-- Update visual properties (background color, name, etc.)

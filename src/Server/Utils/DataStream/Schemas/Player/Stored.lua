@@ -3,7 +3,7 @@ return {
 
 	Collections = {
 		Currencies = {
-			Coins = 0,
+			Coins = 100000,
 		},
 	},
 
@@ -22,10 +22,13 @@ return {
 	Cosmetics = {},
 
 	Skins = {
-		Equipped = "Fluriflura", -- Currently equipped skin ID
+		Equipped = "FluriFlura", -- Currently equipped skin ID
 		EquippedMutation = "Normal", -- Which mutation variant is equipped
 		Collected = { -- Skins collected (unlocked if any mutation exists for skin)
-			{ SkinId = "Fluriflura", Mutations = { "Normal", "Gold" } },
+			{ SkinId = "FluriFlura", Mutations = { "Normal", "Golden" } },
+			{ SkinId = "TimCheese", Mutations = { "Normal" } },
+			{ SkinId = "LiriliLarila", Mutations = { "Normal" } },
+			{ SkinId = "TalpaDiFero", Mutations = { "Normal" } },
 		},
 	},
 

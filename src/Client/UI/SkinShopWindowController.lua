@@ -57,13 +57,15 @@ local function SetupViewportCamera(viewport)
 end
 
 -- Displays a skin model in a viewport
-local function DisplaySkinInViewport(viewport, skinId)
+local function DisplaySkinInViewport(viewport, skinId, mutation)
 	-- Clear existing models
 	for _, child in viewport:GetChildren() do
 		if child:IsA("Model") then
 			child:Destroy()
 		end
 	end
+
+	mutation = mutation or "Normal"
 
 	-- Get skin config and model
 	local skinConfig = SkinsConfig.Skins[skinId]
@@ -72,7 +74,25 @@ local function DisplaySkinInViewport(viewport, skinId)
 		return nil
 	end
 
-	local previewModel = SkinsFolder:FindFirstChild(skinConfig.ModelName)
+	-- Try nested structure: Skins/Fluriflura/Normal
+	local skinFolder = SkinsFolder:FindFirstChild(skinConfig.ModelName)
+	local previewModel = nil
+
+	if skinFolder and skinFolder:IsA("Folder") then
+		-- Look for mutation-specific model
+		previewModel = skinFolder:FindFirstChild(mutation)
+
+		-- Fallback to Normal if mutation not found
+		if not previewModel and mutation ~= "Normal" then
+			previewModel = skinFolder:FindFirstChild("Normal")
+		end
+	end
+
+	-- Legacy fallback: flat structure
+	if not previewModel then
+		previewModel = SkinsFolder:FindFirstChild(skinConfig.ModelName)
+	end
+
 	if not previewModel then
 		DebugLog("Skin model not found:", skinConfig.ModelName)
 		return nil
@@ -118,7 +138,7 @@ local function CreateSkinPreviewCard(skinEntry, boxId, skinTemplate, skinsScroll
 	local skinModel = card:FindFirstChild("SkinModel")
 	local viewport = skinModel and skinModel:FindFirstChild("ViewportFrame") or card:FindFirstChild("ViewportFrame")
 	if viewport then
-		DisplaySkinInViewport(viewport, skinId)
+		DisplaySkinInViewport(viewport, skinId, "Normal")
 	end
 
 	card.Parent = skinsScroll

@@ -54,6 +54,7 @@ local function CreatePhysicsBox(player, spawnCFrame)
 	rootPart.BottomSurface = Enum.SurfaceType.Smooth
 	rootPart.CanCollide = true
 	rootPart.Anchored = false
+	rootPart.Transparency = 0.8
 	rootPart.CFrame = spawnCFrame
 
 	-- Set physics properties (high friction so it doesn't slide on its own - LinearVelocity controls movement)
@@ -74,7 +75,9 @@ local function CreatePhysicsBox(player, spawnCFrame)
 end
 
 -- Clones a skin model from ServerStorage
-local function CloneSkinModel(skinId)
+local function CloneSkinModel(skinId, mutation)
+	mutation = mutation or "Normal"
+
 	local skinConfig = SkinsConfig.Skins[skinId]
 	if not skinConfig then
 		warn("[SkinService] Skin not found:", skinId)
@@ -86,13 +89,36 @@ local function CloneSkinModel(skinId)
 		return nil
 	end
 
-	local skinTemplate = SKINS_FOLDER:FindFirstChild(skinConfig.ModelName)
-	if not skinTemplate then
-		warn("[SkinService] Skin model not found:", skinConfig.ModelName)
+	-- Look for nested structure: Skins/Fluriflura/Normal
+	local skinFolder = SKINS_FOLDER:FindFirstChild(skinConfig.ModelName)
+	if skinFolder and skinFolder:IsA("Folder") then
+		-- Try mutation-specific model
+		local mutationModel = skinFolder:FindFirstChild(mutation)
+		if mutationModel then
+			return mutationModel:Clone()
+		end
+
+		-- Fallback to Normal if mutation missing
+		if mutation ~= "Normal" then
+			warn("[SkinService] Mutation not found:", mutation, "for", skinId, "- using Normal")
+			local normalModel = skinFolder:FindFirstChild("Normal")
+			if normalModel then
+				return normalModel:Clone()
+			end
+		end
+
+		warn("[SkinService] No mutations in folder:", skinConfig.ModelName)
 		return nil
 	end
 
-	return skinTemplate:Clone()
+	-- Legacy fallback: flat structure (backwards compatible)
+	local legacyModel = SKINS_FOLDER:FindFirstChild(skinConfig.ModelName)
+	if legacyModel and legacyModel:IsA("Model") then
+		return legacyModel:Clone()
+	end
+
+	warn("[SkinService] Model not found:", skinConfig.ModelName)
+	return nil
 end
 
 -- API Functions --
@@ -127,10 +153,11 @@ function SkinService:CreatePhysicsCharacter(player, spawnCFrame)
 end
 
 -- Attaches a cosmetic skin to the physics box
-function SkinService:AttachSkin(physicsBox, skinId)
+function SkinService:AttachSkin(physicsBox, skinId, mutation)
 	skinId = skinId or SkinsConfig.DEFAULT_SKIN
+	mutation = mutation or "Normal"
 
-	local skinModel = CloneSkinModel(skinId)
+	local skinModel = CloneSkinModel(skinId, mutation)
 	if not skinModel then
 		DebugLog("No skin model found, using plain box")
 		return false
@@ -225,6 +252,18 @@ function SkinService:GetPlayerSkin(player)
 		end
 	end
 	return SkinsConfig.DEFAULT_SKIN
+end
+
+-- Gets the mutation ID for a player from their stored data
+function SkinService:GetPlayerSkinMutation(player)
+	local stored = DataStream.Stored[player]
+	if stored then
+		local mutation = stored.Skins.EquippedMutation:Read()
+		if mutation and SkinsConfig.Mutations[mutation] then
+			return mutation
+		end
+	end
+	return "Normal"
 end
 
 -- Cleanup when player leaves
