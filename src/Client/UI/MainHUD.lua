@@ -89,6 +89,24 @@ local function UpdateAFKButtonVisibility(state)
 	_AFKButton.Visible = canToggleAFK
 end
 
+-- Updates Spectate button visibility based on round state and player participation
+local function UpdateSpectateButtonVisibility(state)
+	if not _SpectateButton then return end
+
+	-- Spectate only visible when round is active AND player is in lobby
+	local isRoundActive = (state ~= "Waiting" and state ~= "RoundEnd")
+
+	local isPlayerInLobby = true
+	local roundState = ClientDataStream.RoundState
+	if roundState then
+		local players = roundState.Players:Read() or {}
+		local localUserId = tostring(Players.LocalPlayer.UserId)
+		isPlayerInLobby = players[localUserId] == nil
+	end
+
+	_SpectateButton.Visible = isRoundActive and isPlayerInLobby
+end
+
 -- Clones UI from ReplicatedStorage and gets references
 local function SetupUI()
 	if _ScreenGui then return end
@@ -157,6 +175,8 @@ local function SetupUI()
 	-- Bottom left buttons
 	_SpectateButton.MouseButton1Click:Connect(function()
 		DebugLog("Spectate clicked")
+		local SpectateWindowController = shared("SpectateWindowController")
+		SpectateWindowController:ToggleSpectate()
 	end)
 
 	_SettingsButton.MouseButton1Click:Connect(function()
@@ -205,6 +225,9 @@ local function UpdateStatus(state, roundNumber, timeRemaining)
 
 	-- Update AFK button visibility based on state
 	UpdateAFKButtonVisibility(state)
+
+	-- Update Spectate button visibility based on state and player participation
+	UpdateSpectateButtonVisibility(state)
 end
 
 -- API Functions --
@@ -274,6 +297,11 @@ function MainHUD:Init()
 
 			roundState.TimeRemaining:Changed(function(newTimeRemaining)
 				UpdateStatus(roundState.State:Read(), roundState.RoundNumber:Read(), newTimeRemaining)
+			end)
+
+			-- Update spectate button when players list changes (player joins/leaves round)
+			roundState.Players:Changed(function()
+				UpdateSpectateButtonVisibility(roundState.State:Read())
 			end)
 		end
 	end)
