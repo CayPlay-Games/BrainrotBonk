@@ -209,8 +209,8 @@ end
 
 function MainHUD:SetCurrency(amount)
 	if _CurrencyDisplay then
-		-- Find the TextLabel inside CurrencyDisplay to update
-		local amountLabel = _CurrencyDisplay:FindFirstChild("TextLabel")
+		-- Find the Amount label inside CurrencyDisplay to update
+		local amountLabel = _CurrencyDisplay:FindFirstChild("Amount")
 		if amountLabel then
 			amountLabel.Text = tostring(amount)
 		end
@@ -239,6 +239,20 @@ function MainHUD:Init()
 				_IsAFK = newAFK
 				UpdateAFKButtonVisual()
 				DebugLog("AFK status changed to:", newAFK)
+			end)
+		end
+
+		-- Listen for currency changes
+		local stored = ClientDataStream.Stored
+		if stored and stored.Collections and stored.Collections.Currencies then
+			-- Set initial value
+			local coins = stored.Collections.Currencies.Coins:Read() or 0
+			MainHUD:SetCurrency(coins)
+
+			-- Listen for changes
+			stored.Collections.Currencies.Coins:Changed(function(newAmount)
+				MainHUD:SetCurrency(newAmount)
+				DebugLog("Currency updated to:", newAmount)
 			end)
 		end
 

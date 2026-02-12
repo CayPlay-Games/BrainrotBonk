@@ -217,6 +217,7 @@ function UIController:Init()
 	SetupWindow("SkinsWindow")
 	SetupWindow("IndexWindow")
 	SetupWindow("RankWindow")
+	SetupWindow("SkinShopWindow")
 end
 
 -- Return Module --
