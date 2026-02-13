@@ -204,10 +204,12 @@ function AimUI:Init()
 
 		local roundState = ClientDataStream.RoundState
 		if roundState then
-			roundState.State:Changed(function(newState, oldState)
+			roundState.State:Changed(function(newState, _oldState)
+				-- Only show during Aiming phase if player is alive in the round
 				if newState == "Aiming" and IsLocalPlayerInRound() then
 					Show()
-				elseif oldState == "Aiming" or newState == "Waiting" or newState == "RoundEnd" then
+				else
+					-- Hide on any other state change (including elimination, round end, etc.)
 					Hide()
 				end
 			end)

@@ -295,9 +295,14 @@ local function CanStartRound()
 	return activeCount >= RoundConfig.MIN_PLAYERS_TO_START
 end
 
--- Checks if AFK toggle is allowed (only during Waiting or RoundEnd)
-local function CanToggleAFK()
-	return _CurrentState == States.Waiting or _CurrentState == States.RoundEnd
+-- Checks if AFK toggle is allowed for a player
+local function CanToggleAFK(player)
+	-- Always allow during Waiting or RoundEnd
+	if _CurrentState == States.Waiting or _CurrentState == States.RoundEnd then
+		return true
+	end
+	-- Also allow if player is not alive (in lobby or eliminated)
+	return _AlivePlayers[player] ~= true
 end
 
 -- Forward declaration for state transitions
@@ -714,7 +719,14 @@ local function EnterLaunching()
 					-- Must unanchor before setting network ownership
 					hrp.Anchored = false
 					-- Set network ownership to server so velocity changes take effect
-					hrp:SetNetworkOwner(nil)
+					local success, err = pcall(function()
+						hrp:SetNetworkOwner(nil)
+					end)
+					if not success then
+						local skinModel = character:FindFirstChild("Skin")
+						local skinName = skinModel and skinModel.PrimaryPart and skinModel.PrimaryPart.Name or "Unknown"
+						warn("[RoundService] Failed to set network owner for - Skin:", skinName, "-", err)
+					end
 
 					local velocityMagnitude = aim.Power * RoundConfig.LAUNCH_FORCE_MULTIPLIER
 					local direction = aim.Direction.Unit
@@ -999,8 +1011,8 @@ end
 
 -- Toggles AFK status for a player
 function RoundService:ToggleAFK(player)
-	if not CanToggleAFK() then
-		DebugLog(player.DisplayName, "tried to toggle AFK during", _CurrentState)
+	if not CanToggleAFK(player) then
+		DebugLog(player.DisplayName, "tried to toggle AFK while in round during", _CurrentState)
 		return false
 	end
 

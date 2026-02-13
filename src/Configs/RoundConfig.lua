@@ -10,7 +10,7 @@ local TableHelper = shared("TableHelper")
 
 return TableHelper:DeepFreeze({
 	-- Debug settings
-	DEBUG_MODE = false, -- Allow starting with 1 player instead of MIN_PLAYERS_TO_START
+	DEBUG_MODE = true, -- Allow starting with 1 player instead of MIN_PLAYERS_TO_START
 	DEBUG_SKIP_MAP_LOADING = false, -- Use default test map
 	DEBUG_LOG_STATE_CHANGES = true, -- Print state transitions to output
 
