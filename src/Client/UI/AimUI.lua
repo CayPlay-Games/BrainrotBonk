@@ -43,6 +43,16 @@ local function DebugLog(...)
 	end
 end
 
+-- Checks if the local player is participating and alive in the current round
+local function IsLocalPlayerInRound()
+	local roundState = ClientDataStream.RoundState
+	if not roundState then return false end
+	local players = roundState.Players:Read() or {}
+	local localUserId = tostring(LocalPlayer.UserId)
+	local playerData = players[localUserId]
+	return playerData ~= nil and playerData.IsAlive == true
+end
+
 -- Clones UI from ReplicatedStorage and gets references
 local function SetupUI()
 	if _ScreenGui then return end
@@ -195,15 +205,15 @@ function AimUI:Init()
 		local roundState = ClientDataStream.RoundState
 		if roundState then
 			roundState.State:Changed(function(newState, oldState)
-				if newState == "Aiming" then
+				if newState == "Aiming" and IsLocalPlayerInRound() then
 					Show()
 				elseif oldState == "Aiming" or newState == "Waiting" or newState == "RoundEnd" then
 					Hide()
 				end
 			end)
 
-			-- Check current state
-			if roundState.State:Read() == "Aiming" then
+			-- Check current state (only if player is in the round)
+			if roundState.State:Read() == "Aiming" and IsLocalPlayerInRound() then
 				Show()
 			end
 		end
