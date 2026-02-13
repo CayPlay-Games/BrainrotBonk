@@ -30,8 +30,8 @@ SkinBoxesConfig.Boxes = {
 		RobuxPrice = 75,
 		CoinsPrice = 9,
 		Skins = {
-			{ SkinId = "SvininaBombardino", Weight = 50 },
 			{ SkinId = "PipiKiwi", Weight = 50 },
+			{ SkinId = "SvininaBombardino", Weight = 50 },
 		},
 	},
 	TestBoxTwo = {
@@ -41,7 +41,13 @@ SkinBoxesConfig.Boxes = {
 		RobuxPrice = 150,
 		CoinsPrice = 19,
 		Skins = {
-			{ SkinId = "FluriFlura", Weight = 100 },
+			{ SkinId = "BanditoBobrito", Weight = 14.2 },
+			{ SkinId = "BonecaAmbalabu", Weight = 14.2 },
+			{ SkinId = "CactoHipopotamo", Weight = 14.2 },
+			{ SkinId = "TricTracBarabum", Weight = 14.2 },
+			{ SkinId = "TatatataSahur", Weight = 14.2 },
+			{ SkinId = "GangsterFootera", Weight = 14.2 },
+			{ SkinId = "TrippiTroppi", Weight = 14.2 },
 		},
 	},
 }

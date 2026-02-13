@@ -181,13 +181,10 @@ local function UpdateSkinCard(card, skinId, mutation)
 	if not skinConfig then return end
 	mutation = mutation or "Normal"
 
-	-- Set background color based on rarity (or mutation for special variants)
+	-- Set background color based on rarity
 	local mutationConfig = SkinsConfig.Mutations[mutation]
 	local rarity = SkinsConfig.Rarities[skinConfig.Rarity]
-	if mutation ~= "Normal" and mutationConfig then
-		-- Use mutation color for special variants
-		card.BackgroundColor3 = mutationConfig.Color
-	elseif rarity then
+	if rarity then
 		card.BackgroundColor3 = rarity.Color
 	end
 

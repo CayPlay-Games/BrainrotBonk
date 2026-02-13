@@ -85,7 +85,7 @@ return TableHelper:DeepFreeze({
 	-- Folder name in ServerStorage containing skin models
 	SKINS_FOLDER_NAME = "Skins",
 
-	-- Default skin applied to all players (until unlock system)
+	-- Default skin applied to all players
 	DEFAULT_SKIN = "FluriFlura",
 
 	-- Rarity definitions
@@ -142,6 +142,68 @@ return TableHelper:DeepFreeze({
 			ModelName = "PipiKiwi",
 			Icon = "rbxassetid://5902417546"
 		},
+
+
+
+		-- ====================== --
+		-- ====== UNCOMMON ====== --
+		-- ====================== --
+		BanditoBobrito = {
+			DisplayName = "Bandito Bobrito",
+			Description = "Bandito Bobrito Skin",
+			Rarity = Rarities.Uncommon.Name,
+			ModelName = "BanditoBobrito",
+			Icon = "rbxassetid://5902417546"
+		},
+		BonecaAmbalabu = {
+			DisplayName = "Boneca Ambalabu",
+			Description = "Boneca Ambalabu Skin",
+			Rarity = Rarities.Uncommon.Name,
+			ModelName = "BonecaAmbalabu",
+			Icon = "rbxassetid://5902417546"
+		},
+		CactoHipopotamo = {
+			DisplayName = "Cacto Hipopotamo",
+			Description = "Cacto Hipopotamo Skin",
+			Rarity = Rarities.Uncommon.Name,
+			ModelName = "CactoHipopotamo",
+			Icon = "rbxassetid://5902417546"
+		},
+		TricTracBarabum = {
+			DisplayName = "Tric Trac Barabum",
+			Description = "Tric Trac Barabum Skin",
+			Rarity = Rarities.Uncommon.Name,
+			ModelName = "TricTracBarabum",
+			Icon = "rbxassetid://5902417546"
+		},
+		TatatataSahur = {
+			DisplayName = "Tatatata Sahur",
+			Description = "Tatatata Sahur Skin",
+			Rarity = Rarities.Uncommon.Name,
+			ModelName = "TatatataSahur",
+			Icon = "rbxassetid://5902417546"
+		},
+		GangsterFootera = {
+			DisplayName = "Gangster Footera",
+			Description = "Gangster Footera Skin",
+			Rarity = Rarities.Uncommon.Name,
+			ModelName = "GangsterFootera",
+			Icon = "rbxassetid://5902417546"
+		},
+		TrippiTroppi = {
+			DisplayName = "Trippi Troppi",
+			Description = "Trippi Troppi Skin",
+			Rarity = Rarities.Uncommon.Name,
+			ModelName = "TrippiTroppi",
+			Icon = "rbxassetid://5902417546"
+		},
+
+
+
+		-- ===================================== --
+		-- ============ DAY 7 SKINS ============ --
+		-- ==== Exclusive for daily rewards ==== --
+		-- ===================================== --
 		KarkerkarKurkur = {
 			DisplayName = "Karkerkar Kurkur",
 			Description = "Karkerkar Kurkur Skin",
