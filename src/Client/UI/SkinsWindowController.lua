@@ -9,28 +9,21 @@
 -- Root --
 local SkinsWindowController = {}
 
--- Roblox Services --
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
 -- Dependencies --
 local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
 local UIController = shared("UIController")
 local SkinsConfig = shared("SkinsConfig")
 local GetRemoteEvent = shared("GetRemoteEvent")
 local RoundConfig = shared("RoundConfig")
-local ViewportHelper = shared("ViewportHelper")
 
 -- Remote Events --
 local EquipSkinRemoteEvent = GetRemoteEvent("EquipSkin")
-
--- Object References --
-local SkinsFolder = nil
 
 -- Private Variables --
 local _ScreenGui = nil
 local _SkinGrid = nil
 local _PreviewPanel = nil
-local _PreviewViewport = nil
+local _PreviewImage = nil
 local _EquipButton = nil
 local _RarityLabel = nil
 local _SkinNameLabel = nil
@@ -41,7 +34,6 @@ local _SelectedSkinId = nil
 local _SelectedMutation = nil
 local _EquippedSkinId = nil
 local _EquippedMutation = nil
-local _CurrentPreviewModel = nil
 local _IsSetup = false
 local _PlayerStoredDataStream = nil
 
@@ -58,65 +50,13 @@ local function GetCardKey(skinId, mutation)
 	return skinId .. "_" .. mutation
 end
 
--- Creates a ViewportFrame camera for skin preview
-local function SetupViewportCamera(viewport)
-	local camera = Instance.new("Camera")
-	camera.FieldOfView = 50
-	camera.Parent = viewport
-	viewport.CurrentCamera = camera
-	return camera
-end
-
--- Displays a skin model in the viewport
-local function DisplaySkinInViewport(viewport, skinId, mutation, camera)
-	-- Clear existing models
-	for _, child in viewport:GetChildren() do
-		if child:IsA("Model") or child:IsA("Folder") then
-			child:Destroy()
-		end
-	end
-
-	mutation = mutation or "Normal"
-
-	-- Get skin preview model
+-- Gets the icon for a skin from config
+local function GetSkinIcon(skinId)
 	local skinConfig = SkinsConfig.Skins[skinId]
-	if not skinConfig then return nil end
-
-	local skinFolder = SkinsFolder:FindFirstChild(skinConfig.ModelName)
-	local previewModel = nil
-
-	if skinFolder and skinFolder:IsA("Folder") then
-		-- Try mutation-specific variant first (e.g., Skins/FluriFlura/Normal)
-		local mutationAsset = skinFolder:FindFirstChild(mutation)
-
-		-- Fallback to Normal if specific mutation not found
-		if not mutationAsset and mutation ~= "Normal" then
-			mutationAsset = skinFolder:FindFirstChild("Normal")
-		end
-
-		-- If found mutation asset, check if it's a Folder containing a Model
-		if mutationAsset then
-			if mutationAsset:IsA("Folder") then
-				previewModel = mutationAsset:FindFirstChildWhichIsA("Model")
-			elseif mutationAsset:IsA("Model") then
-				previewModel = mutationAsset
-			end
-		end
-
-		-- If no mutation subfolder, look for Model directly in skin folder
-		if not previewModel then
-			previewModel = skinFolder:FindFirstChildWhichIsA("Model")
-		end
-	elseif skinFolder and skinFolder:IsA("Model") then
-		-- Skin folder is actually a Model (legacy flat structure)
-		previewModel = skinFolder
+	if skinConfig and skinConfig.Icon then
+		return skinConfig.Icon
 	end
-
-	if not previewModel then return nil end
-
-	-- Use ViewportHelper to display with auto-calculated distance
-	local clone = ViewportHelper.DisplayModel(viewport, previewModel, camera)
-	return clone
+	return nil
 end
 
 -- Updates equipped indicators on all cards
@@ -159,11 +99,11 @@ local function UpdatePreview(skinId, mutation)
 		_PreviewPanel.BackgroundColor3 = rarity.Color
 	end
 
-	-- Update viewport
-	if _CurrentPreviewModel then
-		_CurrentPreviewModel:Destroy()
+	-- Update preview image
+	local icon = GetSkinIcon(skinId)
+	if _PreviewImage and icon then
+		_PreviewImage.Image = icon
 	end
-	_CurrentPreviewModel = DisplaySkinInViewport(_PreviewViewport, skinId, _SelectedMutation, _PreviewViewport.CurrentCamera)
 
 	-- Update equip button
 	if skinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation then
@@ -218,11 +158,16 @@ local function CreateSkinCard(skinId, mutation)
 	card.Name = cardKey
 	card.Visible = true
 
-	-- Setup viewport preview
-	local viewport = card:FindFirstChild("SkinViewport")
-	if viewport then
-		local camera = SetupViewportCamera(viewport)
-		DisplaySkinInViewport(viewport, skinId, mutation, camera)
+	-- Setup icon preview
+	local preview = card:FindFirstChild("Preview")
+	if preview then
+		local imageLabel = preview:FindFirstChild("ImageLabel")
+		if imageLabel then
+			local icon = GetSkinIcon(skinId)
+			if icon then
+				imageLabel.Image = icon
+			end
+		end
 	end
 
 	-- Update visual properties (background color, name, etc.)
@@ -329,22 +274,17 @@ end
 local function SetupUI(screenGui)
 	if _IsSetup then return end
 
-	SkinsFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Skins")
-
 	_ScreenGui = screenGui
 	local mainFrame = _ScreenGui:WaitForChild("MainFrame")
 	local contentArea = mainFrame:WaitForChild("ContentArea")
 
 	-- Preview panel references
 	_PreviewPanel = contentArea:WaitForChild("PreviewPanel")
-	_PreviewViewport = _PreviewPanel:WaitForChild("PreviewViewport")
+	_PreviewImage = _PreviewPanel:WaitForChild("ImageLabel")
 	_EquipButton = _PreviewPanel:WaitForChild("EquipButton")
 	_RarityLabel = _PreviewPanel:WaitForChild("Rarity")
 	_SkinNameLabel = _PreviewPanel:WaitForChild("SkinName")
 	_MutationLabel = _PreviewPanel:FindFirstChild("MutationLabel") -- Optional
-
-	-- Setup preview viewport camera
-	SetupViewportCamera(_PreviewViewport)
 
 	-- Grid references
 	_SkinGrid = contentArea:WaitForChild("SkinGrid")
