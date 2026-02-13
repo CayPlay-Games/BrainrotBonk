@@ -279,6 +279,44 @@ local function TeleportToLobby(player)
 	end
 end
 
+-- Updates the AFK label on a player's character
+local function UpdateAFKLabel(player, isAFK)
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	-- Check for existing AFK label
+	local existingLabel = character:FindFirstChild("AFKLabel")
+
+	if existingLabel then
+		-- Just toggle visibility if label already exists
+		existingLabel.Enabled = isAFK
+	elseif isAFK then
+		-- Create new label only if AFK and doesn't exist yet
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "AFKLabel"
+		billboard.Size = UDim2.new(2, 0, 1, 0)
+		billboard.StudsOffset = Vector3.new(0, -.5, 0)
+		billboard.AlwaysOnTop = true
+		billboard.Adornee = hrp
+		billboard.Parent = character
+		billboard.MaxDistance = 100
+
+		local textLabel = Instance.new("TextLabel")
+		textLabel.Size = UDim2.new(1, 0, 1, 0)
+		textLabel.BackgroundTransparency = 1
+		textLabel.Text = "AFK"
+		textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+		textLabel.TextStrokeTransparency = 0
+		textLabel.TextScaled = true
+		textLabel.Font = Enum.Font.FredokaOne
+		textLabel.Parent = billboard
+	end
+end
+
 -- Checks if enough non-AFK players are present to start
 local function CanStartRound()
 	local activeCount = 0
@@ -1026,6 +1064,9 @@ function RoundService:ToggleAFK(player)
 	local newAFK = not currentAFK
 	sessionData.IsAFK = newAFK
 
+	-- Update the visual AFK label on the player's character
+	UpdateAFKLabel(player, newAFK)
+
 	DebugLog(player.DisplayName, "AFK status:", newAFK)
 	return true
 end
@@ -1091,6 +1132,16 @@ function RoundService:Init()
 				end)
 			end
 
+			-- Reapply AFK label if player is AFK
+			local sessionData = DataStream.Session[player]
+			if sessionData then
+				local isAFK = sessionData.IsAFK:Read()
+				if isAFK then
+					task.defer(function()
+						UpdateAFKLabel(player, true)
+					end)
+				end
+			end
 		end)
 	end)
 
@@ -1115,6 +1166,17 @@ function RoundService:Init()
 						self:EliminatePlayer(player, "Death")
 					end
 				end)
+			end
+
+			-- Reapply AFK label if player is AFK
+			local sessionData = DataStream.Session[player]
+			if sessionData then
+				local isAFK = sessionData.IsAFK:Read()
+				if isAFK then
+					task.defer(function()
+						UpdateAFKLabel(player, true)
+					end)
+				end
 			end
 		end)
 	end
