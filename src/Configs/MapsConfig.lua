@@ -43,4 +43,7 @@ return TableHelper:DeepFreeze({
 
 	-- ServerStorage path where map models are stored
 	MAPS_FOLDER_NAME = "Maps",
+
+	-- Universal price for picking any map (Robux)
+	PICK_MAP_PRICE = 19,
 })

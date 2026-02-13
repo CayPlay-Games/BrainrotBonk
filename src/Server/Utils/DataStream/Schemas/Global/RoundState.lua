@@ -37,4 +37,8 @@ return {
 	-- Aim data (only populated during Revealing phase, cleared after)
 	-- Key: UserId (as string), Value: { Direction = {X, Y, Z}, Power = number }
 	RevealedAims = {},
+
+	-- Map queue for Robux map picks (session-only, displayed in PickMapWindow)
+	-- Array of { MapId = string, PlayerName = string }
+	MapQueue = {},
 }
