@@ -43,29 +43,34 @@ end
 
 -- Store map reference and original state
 function ClassicMode:OnMapLoaded(mapInstance)
+	if not mapInstance then
+		warn("[ClassicMode] OnMapLoaded called with nil mapInstance")
+		return
+	end
+
 	self._mapInstance = mapInstance
 	self._currentScale = 1.0
 
 	-- Store original pivot point (center of map)
 	self._originalPivot = mapInstance:GetPivot()
 
-	-- Cache all shrinkable parts (exclude KillPart, SpawnPoints, etc.)
+	-- Cache all shrinkable parts (only Platform model and its descendants)
 	self._shrinkableDescendants = {}
-	for _, descendant in ipairs(mapInstance:GetDescendants()) do
-		if descendant:IsA("BasePart") then
-			local shouldShrink = true
 
-			-- Exclude certain parts from shrinking
-			if descendant.Name == "KillPart" then
-				shouldShrink = false
-			end
+	local platform = mapInstance:FindFirstChild("Platform")
+	if platform then
+		-- Include the Platform itself if it's a BasePart
+		if platform:IsA("BasePart") then
+			table.insert(self._shrinkableDescendants, {
+				Part = platform,
+				OriginalSize = platform.Size,
+				OriginalCFrame = platform.CFrame,
+			})
+		end
 
-			-- Check if part is in SpawnPoints folder
-			if descendant:FindFirstAncestor("SpawnPoints") then
-				shouldShrink = false
-			end
-
-			if shouldShrink then
+		-- Include all BasePart descendants of Platform
+		for _, descendant in ipairs(platform:GetDescendants()) do
+			if descendant:IsA("BasePart") then
 				table.insert(self._shrinkableDescendants, {
 					Part = descendant,
 					OriginalSize = descendant.Size,
@@ -73,6 +78,8 @@ function ClassicMode:OnMapLoaded(mapInstance)
 				})
 			end
 		end
+	else
+		warn("[ClassicMode] No 'Platform' model found in map")
 	end
 
 	DebugLog("Map loaded, cached", #self._shrinkableDescendants, "shrinkable parts")
@@ -117,12 +124,20 @@ function ClassicMode:_AnimateShrink(targetScale)
 			continue
 		end
 
-		-- Calculate new size
-		local newSize = data.OriginalSize * targetScale
+		-- Calculate new size (only scale X and Z, keep Y unchanged to maintain thickness)
+		local newSize = Vector3.new(
+			data.OriginalSize.X * targetScale,
+			data.OriginalSize.Y,
+			data.OriginalSize.Z * targetScale
+		)
 
-		-- Calculate new position relative to map center
+		-- Calculate new position relative to map center (only scale X and Z to prevent sinking)
 		local originalOffset = data.OriginalCFrame.Position - mapPivot.Position
-		local scaledOffset = originalOffset * targetScale
+		local scaledOffset = Vector3.new(
+			originalOffset.X * targetScale,
+			originalOffset.Y, -- Keep Y unchanged
+			originalOffset.Z * targetScale
+		)
 		local newPosition = mapPivot.Position + scaledOffset
 
 		-- Create new CFrame preserving rotation

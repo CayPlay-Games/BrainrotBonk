@@ -135,7 +135,13 @@ function GameModeService:Init()
 			local modeId = GetMapGameMode(mapId)
 			ActivateMode(modeId)
 			_RoundNumber = 1
-			InvokeHook("OnMapLoaded", MapService:GetCurrentMapInstance())
+
+			local mapInstance = MapService:GetCurrentMapInstance()
+			if mapInstance then
+				InvokeHook("OnMapLoaded", mapInstance)
+			else
+				warn("[GameModeService] Map instance is nil when entering Spawning state")
+			end
 		end
 
 		-- Track round transitions (Resolution -> Aiming means between rounds)

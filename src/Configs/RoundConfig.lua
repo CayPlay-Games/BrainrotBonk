@@ -15,7 +15,7 @@ return TableHelper:DeepFreeze({
 	DEBUG_LOG_STATE_CHANGES = true, -- Print state transitions to output
 
 	-- Player requirements
-	MIN_PLAYERS_TO_START = 4,
+	MIN_PLAYERS_TO_START = 2,
 	MAX_PLAYERS_PER_ROUND = 12,
 
 	-- Phase durations (seconds)
@@ -28,7 +28,7 @@ return TableHelper:DeepFreeze({
 		LAUNCHING_DURATION = 0.5, -- Brief delay after applying forces
 		RESOLUTION_TIMEOUT = 10, -- Max time waiting for physics to settle
 		ROUND_END_DURATION = 5,
-		INTERMISSION_DURATION = 15,
+		INTERMISSION_DURATION = 5,
 	},
 
 	-- Aim settings
@@ -54,5 +54,5 @@ return TableHelper:DeepFreeze({
 	PHYSICS_BOX_COLOR = Color3.fromRGB(255, 255, 255), -- Default white (skin covers it)
 
 	-- Lobby settings
-	LOBBY_SPAWN_POSITION = Vector3.new(28.43, 61.75, -44), -- Where players spawn in lobby
+	LOBBY_SPAWN_POSITION = Vector3.new(125.528, 161.205, -34.834), -- Where players spawn in lobby
 })

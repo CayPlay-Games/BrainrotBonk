@@ -344,7 +344,7 @@ local function EnterWaiting()
 			if not CanStartRound() then return end
 
 			-- Select map and show notification (triggers client roulette animation)
-			local mapId = MapsConfig.DEFAULT_MAP
+			local mapId = MapsConfig.DEFAULT_MAP or MapService:GetRandomMapId()
 			local mapConfig = MapsConfig.Maps[mapId]
 			DataStream.RoundState.CurrentMapId = mapId
 			DataStream.RoundState.CurrentMapName = mapConfig and mapConfig.DisplayName or mapId
