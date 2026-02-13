@@ -19,6 +19,7 @@ local RoundService = {}
 -- Roblox Services --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 -- Dependencies --
 local DataStream = shared("DataStream")
@@ -585,6 +586,20 @@ local function EnterAiming()
 	-- Clear any previous aims
 	_SubmittedAims = {}
 
+	-- Anchor all players and stop any movement
+	-- This prevents client-side rotation from replicating to other players
+	for entity in pairs(_AlivePlayers) do
+		local character = entity.Character
+		if character then
+			local hrp = character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				hrp.AssemblyLinearVelocity = Vector3.zero
+				hrp.AssemblyAngularVelocity = Vector3.zero
+				hrp.Anchored = true
+			end
+		end
+	end
+
 	-- Auto-submit aims for dummy players immediately
 	for entity in pairs(_AlivePlayers) do
 		-- Dummies are Lua tables, real Players are userdata
@@ -644,7 +659,7 @@ end
 local function EnterRevealing()
 	DebugLog("Entering Revealing state")
 
-	-- Build revealed aims data for DataStream
+	-- Build revealed aims data for DataStream and tween players to face their aim direction
 	local revealedAims = {}
 	for player, aim in pairs(_SubmittedAims) do
 		if _AlivePlayers[player] then
@@ -652,6 +667,26 @@ local function EnterRevealing()
 				Direction = { X = aim.Direction.X, Y = aim.Direction.Y, Z = aim.Direction.Z },
 				Power = aim.Power,
 			}
+
+			-- Tween player to face their aim direction (while still anchored)
+			local character = player.Character
+			if character then
+				local hrp = character:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					local currentPos = hrp.Position
+					local targetLook = Vector3.new(aim.Direction.X, 0, aim.Direction.Z).Unit
+					local targetCFrame = CFrame.lookAt(currentPos, currentPos + targetLook)
+
+					-- Tween rotation over half the reveal duration
+					local tweenInfo = TweenInfo.new(
+						RoundConfig.Timers.REVEALING_DURATION * 0.5,
+						Enum.EasingStyle.Quad,
+						Enum.EasingDirection.Out
+					)
+					local tween = TweenService:Create(hrp, tweenInfo, { CFrame = targetCFrame })
+					tween:Play()
+				end
+			end
 		end
 	end
 
@@ -669,20 +704,24 @@ local function EnterLaunching()
 	-- Clear revealed aims from DataStream
 	DataStream.RoundState.RevealedAims = {}
 
-	-- Apply launch velocities directly via AssemblyLinearVelocity
-	-- This lets Roblox physics handle collisions naturally
+	-- Unanchor all alive players, set server ownership, and apply launch velocities
 	for player, aim in pairs(_SubmittedAims) do
 		if _AlivePlayers[player] then
 			local character = player.Character
 			if character then
 				local hrp = character:FindFirstChild("HumanoidRootPart")
 				if hrp then
+					-- Must unanchor before setting network ownership
+					hrp.Anchored = false
+					-- Set network ownership to server so velocity changes take effect
+					hrp:SetNetworkOwner(nil)
+
 					local velocityMagnitude = aim.Power * RoundConfig.LAUNCH_FORCE_MULTIPLIER
 					local direction = aim.Direction.Unit
-					-- Apply velocity directly (XZ only, preserve Y for gravity)
+					-- Apply velocity directly (XZ only, Y starts at 0)
 					hrp.AssemblyLinearVelocity = Vector3.new(
 						direction.X * velocityMagnitude,
-						hrp.AssemblyLinearVelocity.Y, -- Preserve vertical velocity
+						0,
 						direction.Z * velocityMagnitude
 					)
 					DebugLog(player.Name, "launched with velocity", velocityMagnitude)
