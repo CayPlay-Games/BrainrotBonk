@@ -216,6 +216,11 @@ end
 
 -- Restores the player's original character
 function SkinService:RestoreOriginalCharacter(player)
+	-- Check if player is still in the game
+	if not player or not player.Parent then
+		return
+	end
+
 	local description = _OriginalDescriptions[player]
 
 	-- Respawn the player with their original character

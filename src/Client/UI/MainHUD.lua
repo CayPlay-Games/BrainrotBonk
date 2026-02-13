@@ -192,6 +192,8 @@ local function SetupUI()
 	-- Bottom right buttons
 	_PickMapButton.MouseButton1Click:Connect(function()
 		DebugLog("Pick Map clicked")
+		local UIController = shared("UIController")
+		UIController:ToggleWindow("PickMapWindow")
 	end)
 
 	_PatchNotesButton.MouseButton1Click:Connect(function()

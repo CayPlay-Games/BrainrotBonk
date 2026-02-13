@@ -30,6 +30,7 @@ local RankService = shared("RankService")
 local MapService = shared("MapService")
 local MapsConfig = shared("MapsConfig")
 local SkinService = shared("SkinService")
+local PickMapService = shared("PickMapService")
 
 -- Object References --
 local SubmitAimRemoteEvent = GetRemoteEvent("SubmitAim")
@@ -344,8 +345,13 @@ local function EnterWaiting()
 			if not CanStartRound() then return end
 
 			-- Select map and show notification (triggers client roulette animation)
-			local mapId = MapsConfig.DEFAULT_MAP or MapService:GetRandomMapId()
+			-- Priority: 1) Robux queue, 2) DEFAULT_MAP, 3) Random
+			local queuedMap = PickMapService:PopNextMap()
+			local mapId = queuedMap and queuedMap.MapId or MapsConfig.DEFAULT_MAP or MapService:GetRandomMapId()
 			local mapConfig = MapsConfig.Maps[mapId]
+			if queuedMap then
+				DebugLog("Map picked from queue:", mapId, "by", queuedMap.PlayerName)
+			end
 			DataStream.RoundState.CurrentMapId = mapId
 			DataStream.RoundState.CurrentMapName = mapConfig and mapConfig.DisplayName or mapId
 			DebugLog("Map selected, showing notification:", mapId)

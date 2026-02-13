@@ -142,7 +142,7 @@ local function SetupUI(screenGui)
 	_ScreenGui.Enabled = false -- Start hidden
 
 	-- Get BottomBar references
-	_MainFrame = _ScreenGui:WaitForChild("MainFrame")
+	local _MainFrame = _ScreenGui:WaitForChild("MainFrame")
 
 	local centerPanel = _MainFrame:WaitForChild("CenterPanel")
 	local textSection = centerPanel:WaitForChild("TextSection")

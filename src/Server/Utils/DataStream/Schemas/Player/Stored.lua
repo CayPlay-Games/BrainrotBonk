@@ -60,4 +60,11 @@ return {
 		LastClaimTime = 0, -- os.time() of last claim (0 = never claimed)
 		CycleCount = 1, -- Which cycle we're on (determines Day 7 skin)
 	},
+
+	-- Monetization tracking
+	PurchaseReceiptsProcessed = {}, -- { [PurchaseId] = true } - prevents duplicate processing
+	Monetization = {
+		TotalRobuxSpent = 0, -- Lifetime Robux spent
+		ProductsBought = {}, -- { [ProductIdString] = count }
+	},
 }

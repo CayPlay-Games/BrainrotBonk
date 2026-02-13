@@ -102,6 +102,15 @@ end
 
 -- API Functions --
 
+-- Registers a purchase handler for a DevProduct ID
+-- Handler signature: function(ReceiptInfo, Player) -> boolean
+function MonetizationService:RegisterPurchaseHandler(devProductId, handler)
+	if _PurchaseHandlers[devProductId] then
+		warn("[MonetizationService] Overwriting existing handler for product:", devProductId)
+	end
+	_PurchaseHandlers[devProductId] = handler
+end
+
 -- Initializers --
 function MonetizationService:Init()
 	MarketplaceService.ProcessReceipt = ProcessReceipt
