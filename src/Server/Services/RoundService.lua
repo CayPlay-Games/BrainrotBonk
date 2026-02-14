@@ -32,6 +32,7 @@ local MapService = shared("MapService")
 local MapsConfig = shared("MapsConfig")
 local SkinService = shared("SkinService")
 local PickMapService = shared("PickMapService")
+local PhysicsUtil = shared("PhysicsUtil")
 
 -- Object References --
 local SubmitAimRemoteEvent = GetRemoteEvent("SubmitAim")
@@ -178,7 +179,9 @@ local function SetupKillPartDetection()
 	_KillPartConnection = killPart.Touched:Connect(function(otherPart)
 		-- Find which player/dummy this part belongs to
 		local model = otherPart:FindFirstAncestorOfClass("Model")
-		if not model then return end
+		if not model then
+			return
+		end
 
 		-- Check all alive players/dummies
 		for entity in pairs(_AlivePlayers) do
@@ -230,7 +233,7 @@ local function CreateDummyPlayer(spawnCFrame)
 	-- Set physics properties
 	rootPart.CustomPhysicalProperties = PhysicalProperties.new(
 		RoundConfig.PHYSICS_BOX_DENSITY,
-		1, -- Friction
+		RoundConfig.SLIPPERY_FRICTION, -- Friction
 		RoundConfig.SLIPPERY_ELASTICITY,
 		100,
 		1
@@ -268,7 +271,9 @@ end
 -- Teleports a player to the lobby spawn
 local function TeleportToLobby(player)
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if hrp then
@@ -282,10 +287,14 @@ end
 -- Updates the AFK label on a player's character
 local function UpdateAFKLabel(player, isAFK)
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
 	-- Check for existing AFK label
 	local existingLabel = character:FindFirstChild("AFKLabel")
@@ -298,7 +307,7 @@ local function UpdateAFKLabel(player, isAFK)
 		local billboard = Instance.new("BillboardGui")
 		billboard.Name = "AFKLabel"
 		billboard.Size = UDim2.new(2, 0, 1, 0)
-		billboard.StudsOffset = Vector3.new(0, -.5, 0)
+		billboard.StudsOffset = Vector3.new(0, -0.5, 0)
 		billboard.AlwaysOnTop = true
 		billboard.Adornee = hrp
 		billboard.Parent = character
@@ -385,8 +394,12 @@ local function EnterWaiting()
 
 		task.delay(mapSelectionDelay, function()
 			-- Only proceed if still in Waiting state
-			if _CurrentState ~= States.Waiting then return end
-			if not CanStartRound() then return end
+			if _CurrentState ~= States.Waiting then
+				return
+			end
+			if not CanStartRound() then
+				return
+			end
 
 			-- Select map and show notification (triggers client roulette animation)
 			-- Priority: 1) Robux queue, 2) DEFAULT_MAP, 3) Random
@@ -403,17 +416,23 @@ local function EnterWaiting()
 			-- Delay map loading to let roulette animation play (3 seconds)
 			task.delay(3, function()
 				-- Only proceed if still in Waiting state
-				if _CurrentState ~= States.Waiting then return end
-				if not CanStartRound() then return end
+				if _CurrentState ~= States.Waiting then
+					return
+				end
+				if not CanStartRound() then
+					return
+				end
 
-				MapService:LoadMap(mapId):andThen(function(spawnPoints)
-					_CurrentSpawnPoints = spawnPoints
-					_MapLoadedDuringCountdown = true
-					DebugLog("Map loaded during countdown:", mapId)
-				end):catch(function(err)
-					warn("[RoundService] Failed to load map during countdown:", err)
-					_MapLoadedDuringCountdown = false
-				end)
+				MapService:LoadMap(mapId)
+					:andThen(function(spawnPoints)
+						_CurrentSpawnPoints = spawnPoints
+						_MapLoadedDuringCountdown = true
+						DebugLog("Map loaded during countdown:", mapId)
+					end)
+					:catch(function(err)
+						warn("[RoundService] Failed to load map during countdown:", err)
+						_MapLoadedDuringCountdown = false
+					end)
 			end)
 		end)
 
@@ -502,34 +521,36 @@ local function EnterMapLoading()
 	local mapId = MapsConfig.DEFAULT_MAP
 
 	-- Load the map via MapService
-	MapService:LoadMap(mapId):andThen(function(spawnPoints)
-		if _CurrentState ~= States.MapLoading then
-			return -- State changed while loading, abort
-		end
+	MapService:LoadMap(mapId)
+		:andThen(function(spawnPoints)
+			if _CurrentState ~= States.MapLoading then
+				return -- State changed while loading, abort
+			end
 
-		_CurrentSpawnPoints = spawnPoints
+			_CurrentSpawnPoints = spawnPoints
 
-		-- Update DataStream with map info
-		local mapConfig = MapsConfig.Maps[mapId]
-		DataStream.RoundState.CurrentMapId = mapId
-		DataStream.RoundState.CurrentMapName = mapConfig and mapConfig.DisplayName or mapId
+			-- Update DataStream with map info
+			local mapConfig = MapsConfig.Maps[mapId]
+			DataStream.RoundState.CurrentMapId = mapId
+			DataStream.RoundState.CurrentMapName = mapConfig and mapConfig.DisplayName or mapId
 
-		DebugLog("Map loaded:", mapId, "with", #spawnPoints, "spawn points")
-		TransitionTo(States.Spawning)
-	end):catch(function(err)
-		warn("[RoundService] Failed to load map:", err)
-		-- Fallback: generate circular spawn points facing center
-		_CurrentSpawnPoints = {}
-		for i = 1, 12 do
-			local angle = (i - 1) * (2 * math.pi / 12)
-			local radius = 20
-			local pos = Vector3.new(math.cos(angle) * radius, 5, math.sin(angle) * radius)
-			_CurrentSpawnPoints[i] = CFrame.lookAt(pos, Vector3.new(0, pos.Y, 0))
-		end
-		DataStream.RoundState.CurrentMapId = "Fallback"
-		DataStream.RoundState.CurrentMapName = "Fallback Arena"
-		TransitionTo(States.Spawning)
-	end)
+			DebugLog("Map loaded:", mapId, "with", #spawnPoints, "spawn points")
+			TransitionTo(States.Spawning)
+		end)
+		:catch(function(err)
+			warn("[RoundService] Failed to load map:", err)
+			-- Fallback: generate circular spawn points facing center
+			_CurrentSpawnPoints = {}
+			for i = 1, 12 do
+				local angle = (i - 1) * (2 * math.pi / 12)
+				local radius = 20
+				local pos = Vector3.new(math.cos(angle) * radius, 5, math.sin(angle) * radius)
+				_CurrentSpawnPoints[i] = CFrame.lookAt(pos, Vector3.new(0, pos.Y, 0))
+			end
+			DataStream.RoundState.CurrentMapId = "Fallback"
+			DataStream.RoundState.CurrentMapName = "Fallback Arena"
+			TransitionTo(States.Spawning)
+		end)
 end
 
 local function EnterSpawning()
@@ -768,13 +789,11 @@ local function EnterLaunching()
 
 					local velocityMagnitude = aim.Power * RoundConfig.LAUNCH_FORCE_MULTIPLIER
 					local direction = aim.Direction.Unit
-					-- Apply velocity directly (XZ only, Y starts at 0)
-					hrp.AssemblyLinearVelocity = Vector3.new(
-						direction.X * velocityMagnitude,
-						0,
-						direction.Z * velocityMagnitude
-					)
-					DebugLog(player.Name, "launched with velocity", velocityMagnitude)
+					-- Reset momentum before launch and use impulse-based motion for smoother clashes.
+					hrp.AssemblyLinearVelocity = Vector3.zero
+					hrp.AssemblyAngularVelocity = Vector3.zero
+					PhysicsUtil:ApplyLaunchImpulse(hrp, direction, velocityMagnitude)
+					DebugLog(player.Name, "launched with speed", velocityMagnitude)
 				end
 			end
 		end
@@ -790,12 +809,12 @@ local function EnterResolution()
 	DebugLog("Entering Resolution state")
 
 	local resolutionStartTime = tick()
-	local decayRate = RoundConfig.CURLING_DECAY_RATE or 0.98
-	local minSpeed = RoundConfig.CURLING_MIN_SPEED or 0.3
+	local horizontalDrag = RoundConfig.CURLING_HORIZONTAL_DRAG or 2.6
+	local settleSpeed = RoundConfig.CURLING_SETTLE_SPEED or RoundConfig.CURLING_MIN_SPEED or 0.5
 
 	-- Monitor until players settle or timeout
 	local checkConnection
-	checkConnection = RunService.Heartbeat:Connect(function()
+	checkConnection = RunService.Heartbeat:Connect(function(dt)
 		if _CurrentState ~= States.Resolution then
 			checkConnection:Disconnect()
 			return
@@ -811,30 +830,16 @@ local function EnterResolution()
 			return
 		end
 
-		-- Apply curling stone physics - decay velocity each frame
-		-- Using AssemblyLinearVelocity so Roblox physics handles collisions naturally
+		-- Apply dt-based drag so movement feel is stable across frame rates.
 		local allSettled = true
 		for player in pairs(_AlivePlayers) do
 			local character = player.Character
 			if character then
 				local hrp = character:FindFirstChild("HumanoidRootPart")
 				if hrp then
-					local currentVel = hrp.AssemblyLinearVelocity
-					local horizontalVel = Vector3.new(currentVel.X, 0, currentVel.Z)
-					local speed = horizontalVel.Magnitude
-
-					if speed > minSpeed then
-						-- Decay horizontal velocity (simulates ice friction)
-						local newHorizontalVel = horizontalVel * decayRate
-						hrp.AssemblyLinearVelocity = Vector3.new(
-							newHorizontalVel.X,
-							currentVel.Y, -- Preserve vertical velocity for gravity
-							newHorizontalVel.Z
-						)
+					local settled = PhysicsUtil:ApplyHorizontalDrag(hrp, dt, horizontalDrag, settleSpeed)
+					if not settled then
 						allSettled = false
-					elseif speed > 0.01 then
-						-- Stop horizontal movement when below minimum speed
-						hrp.AssemblyLinearVelocity = Vector3.new(0, currentVel.Y, 0)
 					end
 				end
 			end
