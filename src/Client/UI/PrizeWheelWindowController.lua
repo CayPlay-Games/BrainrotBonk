@@ -123,7 +123,7 @@ local function GetSpinButtonText()
 	if (_State.SpinsLeft or 0) <= 0 then
 		return "No Spins"
 	end
-	return "Spin"
+	return "Spin [" .. _State.SpinsLeft .. "]"
 end
 
 local function UpdateSpinButtonState()
