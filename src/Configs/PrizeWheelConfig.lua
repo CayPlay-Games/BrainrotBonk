@@ -42,7 +42,7 @@ return TableHelper:DeepFreeze({
 			DisplayName = "Gold Mutation",
 			Icon = "rbxassetid://139488764717715",
 			Color = Color3.fromRGB(255, 255, 255),
-			Chance = 1,
+			Chance = 3,
 		},
 		[6] = {
 			Type = "Skin",
