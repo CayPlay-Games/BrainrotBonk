@@ -19,6 +19,7 @@ local RoundService = {}
 -- Roblox Services --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 -- Dependencies --
 local DataStream = shared("DataStream")
@@ -278,6 +279,44 @@ local function TeleportToLobby(player)
 	end
 end
 
+-- Updates the AFK label on a player's character
+local function UpdateAFKLabel(player, isAFK)
+	local character = player.Character
+	if not character then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	-- Check for existing AFK label
+	local existingLabel = character:FindFirstChild("AFKLabel")
+
+	if existingLabel then
+		-- Just toggle visibility if label already exists
+		existingLabel.Enabled = isAFK
+	elseif isAFK then
+		-- Create new label only if AFK and doesn't exist yet
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "AFKLabel"
+		billboard.Size = UDim2.new(2, 0, 1, 0)
+		billboard.StudsOffset = Vector3.new(0, -.5, 0)
+		billboard.AlwaysOnTop = true
+		billboard.Adornee = hrp
+		billboard.Parent = character
+		billboard.MaxDistance = 100
+
+		local textLabel = Instance.new("TextLabel")
+		textLabel.Size = UDim2.new(1, 0, 1, 0)
+		textLabel.BackgroundTransparency = 1
+		textLabel.Text = "AFK"
+		textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+		textLabel.TextStrokeTransparency = 0
+		textLabel.TextScaled = true
+		textLabel.Font = Enum.Font.FredokaOne
+		textLabel.Parent = billboard
+	end
+end
+
 -- Checks if enough non-AFK players are present to start
 local function CanStartRound()
 	local activeCount = 0
@@ -294,9 +333,14 @@ local function CanStartRound()
 	return activeCount >= RoundConfig.MIN_PLAYERS_TO_START
 end
 
--- Checks if AFK toggle is allowed (only during Waiting or RoundEnd)
-local function CanToggleAFK()
-	return _CurrentState == States.Waiting or _CurrentState == States.RoundEnd
+-- Checks if AFK toggle is allowed for a player
+local function CanToggleAFK(player)
+	-- Always allow during Waiting or RoundEnd
+	if _CurrentState == States.Waiting or _CurrentState == States.RoundEnd then
+		return true
+	end
+	-- Also allow if player is not alive (in lobby or eliminated)
+	return _AlivePlayers[player] ~= true
 end
 
 -- Forward declaration for state transitions
@@ -585,6 +629,20 @@ local function EnterAiming()
 	-- Clear any previous aims
 	_SubmittedAims = {}
 
+	-- Anchor all players and stop any movement
+	-- This prevents client-side rotation from replicating to other players
+	for entity in pairs(_AlivePlayers) do
+		local character = entity.Character
+		if character then
+			local hrp = character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				hrp.AssemblyLinearVelocity = Vector3.zero
+				hrp.AssemblyAngularVelocity = Vector3.zero
+				hrp.Anchored = true
+			end
+		end
+	end
+
 	-- Auto-submit aims for dummy players immediately
 	for entity in pairs(_AlivePlayers) do
 		-- Dummies are Lua tables, real Players are userdata
@@ -644,7 +702,7 @@ end
 local function EnterRevealing()
 	DebugLog("Entering Revealing state")
 
-	-- Build revealed aims data for DataStream
+	-- Build revealed aims data for DataStream and tween players to face their aim direction
 	local revealedAims = {}
 	for player, aim in pairs(_SubmittedAims) do
 		if _AlivePlayers[player] then
@@ -652,6 +710,26 @@ local function EnterRevealing()
 				Direction = { X = aim.Direction.X, Y = aim.Direction.Y, Z = aim.Direction.Z },
 				Power = aim.Power,
 			}
+
+			-- Tween player to face their aim direction (while still anchored)
+			local character = player.Character
+			if character then
+				local hrp = character:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					local currentPos = hrp.Position
+					local targetLook = Vector3.new(aim.Direction.X, 0, aim.Direction.Z).Unit
+					local targetCFrame = CFrame.lookAt(currentPos, currentPos + targetLook)
+
+					-- Tween rotation over half the reveal duration
+					local tweenInfo = TweenInfo.new(
+						RoundConfig.Timers.REVEALING_DURATION * 0.5,
+						Enum.EasingStyle.Quad,
+						Enum.EasingDirection.Out
+					)
+					local tween = TweenService:Create(hrp, tweenInfo, { CFrame = targetCFrame })
+					tween:Play()
+				end
+			end
 		end
 	end
 
@@ -669,20 +747,31 @@ local function EnterLaunching()
 	-- Clear revealed aims from DataStream
 	DataStream.RoundState.RevealedAims = {}
 
-	-- Apply launch velocities directly via AssemblyLinearVelocity
-	-- This lets Roblox physics handle collisions naturally
+	-- Unanchor all alive players, set server ownership, and apply launch velocities
 	for player, aim in pairs(_SubmittedAims) do
 		if _AlivePlayers[player] then
 			local character = player.Character
 			if character then
 				local hrp = character:FindFirstChild("HumanoidRootPart")
 				if hrp then
+					-- Must unanchor before setting network ownership
+					hrp.Anchored = false
+					-- Set network ownership to server so velocity changes take effect
+					local success, err = pcall(function()
+						hrp:SetNetworkOwner(nil)
+					end)
+					if not success then
+						local skinModel = character:FindFirstChild("Skin")
+						local skinName = skinModel and skinModel.PrimaryPart and skinModel.PrimaryPart.Name or "Unknown"
+						warn("[RoundService] Failed to set network owner for - Skin:", skinName, "-", err)
+					end
+
 					local velocityMagnitude = aim.Power * RoundConfig.LAUNCH_FORCE_MULTIPLIER
 					local direction = aim.Direction.Unit
-					-- Apply velocity directly (XZ only, preserve Y for gravity)
+					-- Apply velocity directly (XZ only, Y starts at 0)
 					hrp.AssemblyLinearVelocity = Vector3.new(
 						direction.X * velocityMagnitude,
-						hrp.AssemblyLinearVelocity.Y, -- Preserve vertical velocity
+						0,
 						direction.Z * velocityMagnitude
 					)
 					DebugLog(player.Name, "launched with velocity", velocityMagnitude)
@@ -960,8 +1049,8 @@ end
 
 -- Toggles AFK status for a player
 function RoundService:ToggleAFK(player)
-	if not CanToggleAFK() then
-		DebugLog(player.DisplayName, "tried to toggle AFK during", _CurrentState)
+	if not CanToggleAFK(player) then
+		DebugLog(player.DisplayName, "tried to toggle AFK while in round during", _CurrentState)
 		return false
 	end
 
@@ -974,6 +1063,9 @@ function RoundService:ToggleAFK(player)
 	local currentAFK = sessionData.IsAFK:Read()
 	local newAFK = not currentAFK
 	sessionData.IsAFK = newAFK
+
+	-- Update the visual AFK label on the player's character
+	UpdateAFKLabel(player, newAFK)
 
 	DebugLog(player.DisplayName, "AFK status:", newAFK)
 	return true
@@ -1040,6 +1132,16 @@ function RoundService:Init()
 				end)
 			end
 
+			-- Reapply AFK label if player is AFK
+			local sessionData = DataStream.Session[player]
+			if sessionData then
+				local isAFK = sessionData.IsAFK:Read()
+				if isAFK then
+					task.defer(function()
+						UpdateAFKLabel(player, true)
+					end)
+				end
+			end
 		end)
 	end)
 
@@ -1064,6 +1166,17 @@ function RoundService:Init()
 						self:EliminatePlayer(player, "Death")
 					end
 				end)
+			end
+
+			-- Reapply AFK label if player is AFK
+			local sessionData = DataStream.Session[player]
+			if sessionData then
+				local isAFK = sessionData.IsAFK:Read()
+				if isAFK then
+					task.defer(function()
+						UpdateAFKLabel(player, true)
+					end)
+				end
 			end
 		end)
 	end

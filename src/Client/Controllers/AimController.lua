@@ -56,6 +56,16 @@ local function DebugLog(...)
 	end
 end
 
+-- Checks if the local player is participating and alive in the current round
+local function IsLocalPlayerInRound()
+	local roundState = ClientDataStream.RoundState
+	if not roundState then return false end
+	local players = roundState.Players:Read() or {}
+	local localUserId = tostring(LocalPlayer.UserId)
+	local playerData = players[localUserId]
+	return playerData ~= nil and playerData.IsAlive == true
+end
+
 -- Creates an arrow for a specific character
 local function CreateArrowForCharacter(character)
 	if not character then
@@ -203,6 +213,11 @@ end
 
 -- Submits the current aim to the server
 local function SubmitAim()
+	-- Verify player is still alive before submitting
+	if not IsLocalPlayerInRound() then
+		DebugLog("Cannot submit aim - player not in round or eliminated")
+		return
+	end
 	DebugLog("Submitting aim - Direction:", _CurrentDirection, "Power:", _CurrentPower)
 	SubmitAimRemoteEvent:FireServer(_CurrentDirection, _CurrentPower)
 end
@@ -395,8 +410,8 @@ function AimController:Init()
 
 				DebugLog("Round state changed:", previousState, "->", newState)
 
-				-- Handle Aiming phase
-				if newState == "Aiming" then
+				-- Handle Aiming phase (only if player is in the round)
+				if newState == "Aiming" and IsLocalPlayerInRound() then
 					StartAiming()
 				elseif previousState == "Aiming" and newState ~= "Aiming" then
 					StopAiming()
@@ -410,8 +425,8 @@ function AimController:Init()
 				end
 			end)
 
-			-- Check if we're already in aiming state
-			if lastKnownState == "Aiming" then
+			-- Check if we're already in aiming state (only if player is in the round)
+			if lastKnownState == "Aiming" and IsLocalPlayerInRound() then
 				StartAiming()
 			elseif lastKnownState == "Revealing" then
 				StartReveal()
