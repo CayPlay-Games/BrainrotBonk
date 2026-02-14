@@ -10,18 +10,11 @@
 -- Root --
 local IndexWindowController = {}
 
--- Roblox Services --
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
 -- Dependencies --
 local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
 local UIController = shared("UIController")
 local SkinsConfig = shared("SkinsConfig")
 local RoundConfig = shared("RoundConfig")
-local ViewportHelper = shared("ViewportHelper")
-
--- Object References --
-local SkinsFolder = nil
 
 -- Private Variables --
 local _ScreenGui = nil
@@ -64,18 +57,30 @@ local function DebugLog(...)
 	end
 end
 
--- Creates a ViewportFrame camera for skin preview
-local function SetupViewportCamera(viewport)
-	local camera = Instance.new("Camera")
-	camera.FieldOfView = 50
-	camera.Parent = viewport
-	viewport.CurrentCamera = camera
-	return camera
+-- Gets the icon for a skin from config
+local function GetSkinIcon(skinId)
+	local skinConfig = SkinsConfig.Skins[skinId]
+	if skinConfig and skinConfig.Icon then
+		return skinConfig.Icon
+	end
+	return nil
+end
+
+local function FindPreviewImage(card)
+	return card:FindFirstChild("PreviewIcon", true)
+		or card:FindFirstChild("ImageLabel", true)
+		or card:FindFirstChild("ItemImage", true)
+end
+
+local function IsImageObject(instance)
+	return instance and (instance:IsA("ImageLabel") or instance:IsA("ImageButton"))
 end
 
 -- Checks if a skin+mutation combo is collected
 local function IsCollected(skinId, mutation)
-	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then return false end
+	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then
+		return false
+	end
 
 	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
 	for _, entry in ipairs(collected) do
@@ -88,7 +93,9 @@ end
 
 -- Gets count of collected skins for a specific mutation
 local function GetCollectedMutationCount(mutation)
-	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then return 0 end
+	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then
+		return 0
+	end
 
 	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
 	local count = 0
@@ -102,7 +109,9 @@ end
 
 -- Gets total number of distinct skins the player has collected (regardless of mutation)
 local function _GetPlayerSkinCount()
-	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then return 0 end
+	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then
+		return 0
+	end
 
 	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
 	return #collected
@@ -134,7 +143,9 @@ end
 
 -- Gets total collected across all mutations (for header display)
 local function GetTotalCollectedCount()
-	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then return 0 end
+	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then
+		return 0
+	end
 
 	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
 	local count = 0
@@ -146,10 +157,10 @@ end
 
 -- Applies blacked out effect for uncollected skins
 local function ApplyLockedEffect(card)
-	local viewport = card:FindFirstChild("ItemViewport")
-	if viewport then
+	local previewContainer = card:FindFirstChild("ItemViewport") or FindPreviewImage(card)
+	if previewContainer and previewContainer:IsA("GuiObject") then
 		-- Check if overlay already exists
-		local existingOverlay = viewport:FindFirstChild("LockedOverlay")
+		local existingOverlay = previewContainer:FindFirstChild("LockedOverlay")
 		if not existingOverlay then
 			local overlay = Instance.new("Frame")
 			overlay.Name = "LockedOverlay"
@@ -157,8 +168,17 @@ local function ApplyLockedEffect(card)
 			overlay.BackgroundColor3 = Color3.new(0, 0, 0)
 			overlay.BackgroundTransparency = 0.2
 			overlay.ZIndex = 10
-			overlay.Parent = viewport
+			overlay.Parent = previewContainer
+
+			local UICorner = Instance.new("UICorner")
+			UICorner.CornerRadius = UDim.new(0, 12)
+			UICorner.Parent = overlay
 		end
+	end
+
+	local previewImage = FindPreviewImage(card)
+	if IsImageObject(previewImage) then
+		previewImage.ImageColor3 = Color3.fromRGB(80, 80, 80)
 	end
 
 	-- Gray out text labels
@@ -180,62 +200,26 @@ end
 
 -- Removes locked effect (for collected skins)
 local function RemoveLockedEffect(card)
-	local viewport = card:FindFirstChild("ItemViewport")
-	if viewport then
-		local overlay = viewport:FindFirstChild("LockedOverlay")
+	local previewContainer = card:FindFirstChild("ItemViewport") or FindPreviewImage(card)
+	if previewContainer then
+		local overlay = previewContainer:FindFirstChild("LockedOverlay")
 		if overlay then
 			overlay:Destroy()
 		end
 	end
-end
 
--- Displays a skin model in the viewport
-local function DisplaySkinInViewport(viewport, skinId, camera)
-	-- Clear existing models
-	for _, child in viewport:GetChildren() do
-		if child:IsA("Model") or child:IsA("Folder") then
-			child:Destroy()
-		end
+	local previewImage = FindPreviewImage(card)
+	if IsImageObject(previewImage) then
+		previewImage.ImageColor3 = Color3.fromRGB(255, 255, 255)
 	end
-
-	local skinConfig = SkinsConfig.Skins[skinId]
-	if not skinConfig then return nil end
-
-	local skinFolder = SkinsFolder:FindFirstChild(skinConfig.ModelName)
-	if not skinFolder then return nil end
-
-	local previewModel = nil
-
-	if skinFolder:IsA("Folder") then
-		-- Try to find "Normal" variant first (for index, show default variant)
-		local normalAsset = skinFolder:FindFirstChild("Normal")
-		if normalAsset then
-			if normalAsset:IsA("Folder") then
-				previewModel = normalAsset:FindFirstChildWhichIsA("Model")
-			elseif normalAsset:IsA("Model") then
-				previewModel = normalAsset
-			end
-		end
-
-		-- If no Normal variant, look for Model directly in skin folder
-		if not previewModel then
-			previewModel = skinFolder:FindFirstChildWhichIsA("Model")
-		end
-	elseif skinFolder:IsA("Model") then
-		-- Legacy: skin folder is actually a Model
-		previewModel = skinFolder
-	end
-
-	if not previewModel then return nil end
-
-	local clone = ViewportHelper.DisplayModel(viewport, previewModel, camera)
-	return clone
 end
 
 -- Creates an index card for a skin
 local function CreateIndexCard(skinId)
 	local skinConfig = SkinsConfig.Skins[skinId]
-	if not skinConfig then return nil end
+	if not skinConfig then
+		return nil
+	end
 
 	local card = _CardTemplate:Clone()
 	card.Name = skinId
@@ -267,11 +251,12 @@ local function CreateIndexCard(skinId)
 		end
 	end
 
-	-- Setup viewport preview
-	local viewport = card:FindFirstChild("ItemViewport")
-	if viewport then
-		local camera = SetupViewportCamera(viewport)
-		DisplaySkinInViewport(viewport, skinId, camera)
+	-- Setup image preview
+	local previewImage = FindPreviewImage(card)
+	local icon = GetSkinIcon(skinId)
+	if IsImageObject(previewImage) and icon then
+		previewImage.Image = icon
+		previewImage.ImageColor3 = Color3.fromRGB(255, 255, 255)
 	end
 
 	-- Apply locked effect if not collected
@@ -360,7 +345,9 @@ end
 
 -- Updates sidebar tab visuals
 local function UpdateSidebarTabs()
-	if not _Sidebar then return end
+	if not _Sidebar then
+		return
+	end
 
 	for _, tabInfo in ipairs(SIDEBAR_TABS) do
 		local tab = _Sidebar:FindFirstChild(tabInfo.name)
@@ -412,7 +399,9 @@ end
 
 -- Sets up top tabs (Skins/Titles)
 local function SetupTopTabs()
-	if not _TopTabs then return end
+	if not _TopTabs then
+		return
+	end
 
 	local skinsTab = _TopTabs:FindFirstChild("SkinsTopTab")
 	local titlesTab = _TopTabs:FindFirstChild("TitlesTopTab")
@@ -436,9 +425,9 @@ end
 
 -- Sets up UI references
 local function SetupUI(screenGui)
-	if _IsSetup then return end
-
-	SkinsFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Skins")
+	if _IsSetup then
+		return
+	end
 
 	_ScreenGui = screenGui
 	local mainFrame = _ScreenGui:WaitForChild("MainFrame")

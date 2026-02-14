@@ -42,14 +42,15 @@ local _TimerConnection = nil
 
 -- Internal Functions --
 
-
 -- Sets up the icon and amount for a day frame based on reward type
 local function SetupDayIcon(frame, dayNumber, status)
 	local icon = frame:FindFirstChild("Icon")
 	local amountLabel = frame:FindFirstChild("Amount")
 
 	local rewardData = DailyRewardConfig.Days[dayNumber]
-	if not rewardData then return end
+	if not rewardData then
+		return
+	end
 
 	-- Set amount label with "x" prefix
 	if amountLabel then
@@ -64,7 +65,9 @@ local function SetupDayIcon(frame, dayNumber, status)
 	end
 
 	-- Set icon
-	if not icon then return end
+	if not icon then
+		return
+	end
 
 	if rewardData.Type == "Coins" or rewardData.Type == "Spins" then
 		-- For Coins/Spins: Set image on ImageLabel
@@ -124,20 +127,20 @@ local function UpdateDayFrame(dayNumber, status)
 	-- Update StatusButton appearance based on state
 	if statusButton then
 		if state == "Claimed" then
-			statusButton.Text = "Claimed"
-			statusButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+			statusButton.TextLabel.Text = "Claimed"
+			statusButton.ImageColor3 = Color3.fromRGB(60, 60, 60)
 			statusButton.Active = false
 		elseif state == "Available" then
-			statusButton.Text = "Claim!"
-			statusButton.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
+			statusButton.TextLabel.Text = "Claim!"
+			statusButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
 			statusButton.Active = true
 		elseif state == "Countdown" then
-			statusButton.Text = "Next Reward"
-			statusButton.BackgroundColor3 = Color3.fromRGB(200, 150, 50)
+			statusButton.TextLabel.Text = "Next Reward"
+			statusButton.ImageColor3 = Color3.fromRGB(200, 150, 50)
 			statusButton.Active = false
 		else -- Locked
-			statusButton.Text = "Locked"
-			statusButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+			statusButton.TextLabel.Text = "Locked"
+			statusButton.ImageColor3 = Color3.fromRGB(55, 55, 55)
 			statusButton.Active = false
 		end
 	end
