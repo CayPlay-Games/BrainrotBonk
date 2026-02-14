@@ -162,6 +162,16 @@ local function SetupUI()
 		local UIController = shared("UIController")
 		UIController:ToggleWindow("DailyRewardWindow")
 	end)
+
+	local prizeWheelButton = topRight:FindFirstChild("PrizeWheelButton")
+	if prizeWheelButton and prizeWheelButton:IsA("GuiButton") then
+		prizeWheelButton.MouseButton1Click:Connect(function()
+			DebugLog("Prize Wheel clicked")
+			local UIController = shared("UIController")
+			UIController:ToggleWindow("PrizeWheelWindow")
+		end)
+	end
+
 	buttonGrid.PenguinButton.MouseButton1Click:Connect(function()
 		DebugLog("Penguin clicked")
 		local UIController = shared("UIController")
