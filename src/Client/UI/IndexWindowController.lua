@@ -67,7 +67,7 @@ local function GetSkinIcon(skinId)
 end
 
 local function FindPreviewImage(card)
-	return card:FindFirstChild("SkinIcon", true)
+	return card:FindFirstChild("PreviewIcon", true)
 		or card:FindFirstChild("ImageLabel", true)
 		or card:FindFirstChild("ItemImage", true)
 end
