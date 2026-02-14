@@ -171,7 +171,7 @@ local function ApplyLockedEffect(card)
 			overlay.Parent = previewContainer
 
 			local UICorner = Instance.new("UICorner")
-			UICorner.CornerRadius = UDim2.fromOffset(0, 12)
+			UICorner.CornerRadius = UDim.new(0, 12)
 			UICorner.Parent = overlay
 		end
 	end

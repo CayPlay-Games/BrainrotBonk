@@ -75,7 +75,9 @@ local function UpdatePreview(skinId, mutation)
 	_SelectedSkinId = skinId
 	_SelectedMutation = mutation or "Normal"
 	local skinConfig = SkinsConfig.Skins[skinId]
-	if not skinConfig then return end
+	if not skinConfig then
+		return
+	end
 
 	-- Update skin name label
 	_SkinNameLabel.Text = skinConfig.DisplayName
@@ -107,18 +109,20 @@ local function UpdatePreview(skinId, mutation)
 
 	-- Update equip button
 	if skinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation then
-		_EquipButton.Text = "Equipped"
-		_EquipButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+		_EquipButton.TextLabel.Text = "Equipped"
+		_EquipButton.ImageColor3 = Color3.fromRGB(100, 100, 100)
 	else
-		_EquipButton.Text = "Equip"
-		_EquipButton.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
+		_EquipButton.TextLabel.Text = "Equip"
+		_EquipButton.ImageColor3 = Color3.fromRGB(80, 200, 80)
 	end
 end
 
 -- Updates a skin card's visual properties
 local function UpdateSkinCard(card, skinId, mutation)
 	local skinConfig = SkinsConfig.Skins[skinId]
-	if not skinConfig then return end
+	if not skinConfig then
+		return
+	end
 	mutation = mutation or "Normal"
 
 	-- Set background color based on rarity
@@ -150,7 +154,9 @@ end
 -- Creates a skin card for the grid
 local function CreateSkinCard(skinId, mutation)
 	local skinConfig = SkinsConfig.Skins[skinId]
-	if not skinConfig then return nil end
+	if not skinConfig then
+		return nil
+	end
 	mutation = mutation or "Normal"
 
 	local cardKey = GetCardKey(skinId, mutation)
@@ -187,7 +193,9 @@ end
 -- Populates the grid with unlocked skins (optimized - only creates/removes as needed)
 local function PopulateGrid()
 	-- Get skins data from DataStream
-	if not _PlayerStoredDataStream then return end
+	if not _PlayerStoredDataStream then
+		return
+	end
 
 	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
 	_EquippedSkinId = _PlayerStoredDataStream.Skins.Equipped:Read() or SkinsConfig.DEFAULT_SKIN
@@ -272,7 +280,9 @@ end
 
 -- Sets up UI references and handlers
 local function SetupUI(screenGui)
-	if _IsSetup then return end
+	if _IsSetup then
+		return
+	end
 
 	_ScreenGui = screenGui
 	local mainFrame = _ScreenGui:WaitForChild("MainFrame")
@@ -329,8 +339,8 @@ function SkinsWindowController:Init()
 				-- Update equip button if viewing this skin+mutation combo
 				local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
 				if isNowEquipped then
-					_EquipButton.Text = "Equipped"
-					_EquipButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+					_EquipButton.TextLabel.Text = "Equipped"
+					_EquipButton.ImageColor3 = Color3.fromRGB(100, 100, 100)
 				end
 			end)
 
@@ -341,8 +351,8 @@ function SkinsWindowController:Init()
 				-- Update equip button if viewing this skin+mutation combo
 				local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
 				if isNowEquipped then
-					_EquipButton.Text = "Equipped"
-					_EquipButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+					_EquipButton.TextLabel.Text = "Equipped"
+					_EquipButton.ImageColor3 = Color3.fromRGB(100, 100, 100)
 				end
 			end)
 
