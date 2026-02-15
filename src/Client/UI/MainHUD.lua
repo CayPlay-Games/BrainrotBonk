@@ -207,6 +207,8 @@ local function SetupUI()
 
 	_SettingsButton.MouseButton1Click:Connect(function()
 		DebugLog("Settings clicked")
+		local UIController = shared("UIController")
+		UIController:ToggleWindow("SettingsWindow")
 	end)
 
 	-- Bottom right buttons
