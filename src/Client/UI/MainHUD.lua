@@ -81,12 +81,22 @@ local function UpdateAFKButtonVisual()
 	end
 end
 
--- Updates AFK button visibility based on round state
-local function UpdateAFKButtonVisibility(state)
+-- Updates AFK button visibility based on whether player is in the lobby
+local function UpdateAFKButtonVisibility()
 	if not _AFKButton then return end
-	-- Only show AFK button during Waiting or RoundEnd
-	local canToggleAFK = (state == "Waiting" or state == "RoundEnd")
-	_AFKButton.Visible = canToggleAFK
+
+	-- Show AFK button when player is in the lobby (not actively alive in a round)
+	local isPlayerInLobby = true
+	local roundState = ClientDataStream.RoundState
+	if roundState then
+		local players = roundState.Players:Read() or {}
+		local localUserId = tostring(Players.LocalPlayer.UserId)
+		local playerData = players[localUserId]
+		-- Player is "in lobby" if not in players list OR if eliminated (not alive)
+		isPlayerInLobby = playerData == nil or playerData.IsAlive == false
+	end
+
+	_AFKButton.Visible = isPlayerInLobby
 end
 
 -- Updates Spectate button visibility based on round state and player participation
@@ -152,6 +162,16 @@ local function SetupUI()
 		local UIController = shared("UIController")
 		UIController:ToggleWindow("DailyRewardWindow")
 	end)
+
+	local prizeWheelButton = topRight:FindFirstChild("PrizeWheelButton")
+	if prizeWheelButton and prizeWheelButton:IsA("GuiButton") then
+		prizeWheelButton.MouseButton1Click:Connect(function()
+			DebugLog("Prize Wheel clicked")
+			local UIController = shared("UIController")
+			UIController:ToggleWindow("PrizeWheelWindow")
+		end)
+	end
+
 	buttonGrid.PenguinButton.MouseButton1Click:Connect(function()
 		DebugLog("Penguin clicked")
 		local UIController = shared("UIController")
@@ -231,8 +251,8 @@ local function UpdateStatus(state, roundNumber, timeRemaining)
 		_RoundLabel.Visible = (state ~= "Waiting")
 	end
 
-	-- Update AFK button visibility based on state
-	UpdateAFKButtonVisibility(state)
+	-- Update AFK button visibility based on lobby status
+	UpdateAFKButtonVisibility()
 
 	-- Update Spectate button visibility based on state and player participation
 	UpdateSpectateButtonVisibility(state)
@@ -307,9 +327,10 @@ function MainHUD:Init()
 				UpdateStatus(roundState.State:Read(), roundState.RoundNumber:Read(), newTimeRemaining)
 			end)
 
-			-- Update spectate button when players list changes (player joins/leaves round)
+			-- Update buttons when players list changes (player joins/leaves round)
 			roundState.Players:Changed(function()
 				UpdateSpectateButtonVisibility(roundState.State:Read())
+				UpdateAFKButtonVisibility()
 			end)
 		end
 	end)

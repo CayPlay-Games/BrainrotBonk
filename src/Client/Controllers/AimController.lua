@@ -56,12 +56,26 @@ local function DebugLog(...)
 	end
 end
 
+-- Checks if the local player is participating and alive in the current round
+local function IsLocalPlayerInRound()
+	local roundState = ClientDataStream.RoundState
+	if not roundState then return false end
+	local players = roundState.Players:Read() or {}
+	local localUserId = tostring(LocalPlayer.UserId)
+	local playerData = players[localUserId]
+	return playerData ~= nil and playerData.IsAlive == true
+end
+
 -- Creates an arrow for a specific character
 local function CreateArrowForCharacter(character)
-	if not character then return nil end
+	if not character then
+		return nil
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return nil end
+	if not hrp then
+		return nil
+	end
 
 	-- Clone the arrow template
 	local arrow = ArrowTemplate:Clone()
@@ -76,10 +90,14 @@ end
 
 -- Updates an arrow's position, rotation, and scale based on direction and power
 local function UpdateArrowTransform(arrow, character, direction, power)
-	if not arrow or not character then return end
+	if not arrow or not character then
+		return
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
 	-- Calculate scale based on power (X direction)
 	local powerRatio = (power - RoundConfig.AIM_POWER_MIN) / (RoundConfig.AIM_POWER_MAX - RoundConfig.AIM_POWER_MIN)
@@ -96,7 +114,8 @@ local function UpdateArrowTransform(arrow, character, direction, power)
 	local outwardOffset = ARROW_OFFSET_DISTANCE + (arrowSizeX / 2)
 
 	-- Arrow points in the aim direction, with rotation offset
-	local arrowCFrame = CFrame.lookAt(startPos + dir * outwardOffset, startPos + dir * (outwardOffset + 10)) * ARROW_ROTATION_OFFSET
+	local arrowCFrame = CFrame.lookAt(startPos + dir * outwardOffset, startPos + dir * (outwardOffset + 10))
+		* ARROW_ROTATION_OFFSET
 	arrow.CFrame = arrowCFrame
 end
 
@@ -112,16 +131,23 @@ end
 
 -- Updates the arrow position and rotation to match aim direction
 local function UpdateAimArrow()
-	if not _AimArrow then return end
+	if not _AimArrow then
+		return
+	end
 
 	local character = LocalPlayer.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
 	-- Calculate scale based on power (X direction)
-	local powerRatio = (_CurrentPower - RoundConfig.AIM_POWER_MIN) / (RoundConfig.AIM_POWER_MAX - RoundConfig.AIM_POWER_MIN)
+	local powerRatio = (_CurrentPower - RoundConfig.AIM_POWER_MIN)
+		/ (RoundConfig.AIM_POWER_MAX - RoundConfig.AIM_POWER_MIN)
 	local scaleX = ARROW_BASE_SCALE_X + powerRatio * (ARROW_MAX_SCALE_X - ARROW_BASE_SCALE_X)
 
 	-- Calculate arrow size
@@ -135,7 +161,8 @@ local function UpdateAimArrow()
 	local outwardOffset = ARROW_OFFSET_DISTANCE + (arrowSizeX / 2)
 
 	-- Arrow points in the aim direction, with rotation offset
-	local arrowCFrame = CFrame.lookAt(startPos + direction * outwardOffset, startPos + direction * (outwardOffset + 10)) * ARROW_ROTATION_OFFSET
+	local arrowCFrame = CFrame.lookAt(startPos + direction * outwardOffset, startPos + direction * (outwardOffset + 10))
+		* ARROW_ROTATION_OFFSET
 	_AimArrow.CFrame = arrowCFrame
 end
 
@@ -150,10 +177,14 @@ end
 -- Updates aim direction based on camera look direction
 local function UpdateAimFromCamera()
 	local character = LocalPlayer.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		return
+	end
 
 	-- Get camera look direction, flattened to horizontal
 	local cameraLook = CurrentCamera.CFrame.LookVector
@@ -171,26 +202,31 @@ end
 
 -- Adjusts power by delta (clamped to min/max)
 local function AdjustPower(delta)
-	if not _IsAiming then return end
+	if not _IsAiming then
+		return
+	end
 
-	_CurrentPower = math.clamp(
-		_CurrentPower + delta,
-		RoundConfig.AIM_POWER_MIN,
-		RoundConfig.AIM_POWER_MAX
-	)
+	_CurrentPower = math.clamp(_CurrentPower + delta, RoundConfig.AIM_POWER_MIN, RoundConfig.AIM_POWER_MAX)
 
 	DebugLog("Power:", _CurrentPower)
 end
 
 -- Submits the current aim to the server
 local function SubmitAim()
+	-- Verify player is still alive before submitting
+	if not IsLocalPlayerInRound() then
+		DebugLog("Cannot submit aim - player not in round or eliminated")
+		return
+	end
 	DebugLog("Submitting aim - Direction:", _CurrentDirection, "Power:", _CurrentPower)
 	SubmitAimRemoteEvent:FireServer(_CurrentDirection, _CurrentPower)
 end
 
 -- Starts the aiming mode
 local function StartAiming()
-	if _IsAiming then return end
+	if _IsAiming then
+		return
+	end
 
 	DebugLog("Starting aim mode")
 	_IsAiming = true
@@ -206,7 +242,9 @@ local function StartAiming()
 
 	-- Setup input handling for power adjustment
 	_InputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed then return end
+		if gameProcessed then
+			return
+		end
 
 		-- Q to decrease power
 		if input.KeyCode == Enum.KeyCode.Q then
@@ -241,7 +279,9 @@ end
 
 -- Stops the aiming mode
 local function StopAiming()
-	if not _IsAiming then return end
+	if not _IsAiming then
+		return
+	end
 
 	DebugLog("Stopping aim mode")
 
@@ -281,7 +321,9 @@ local function StartReveal()
 	end
 
 	local revealedAims = roundState.RevealedAims:Read()
-	if not revealedAims then return end
+	if not revealedAims then
+		return
+	end
 
 	-- Create arrow for each player with revealed aim
 	for odometer, aimData in pairs(revealedAims) do
@@ -368,8 +410,8 @@ function AimController:Init()
 
 				DebugLog("Round state changed:", previousState, "->", newState)
 
-				-- Handle Aiming phase
-				if newState == "Aiming" then
+				-- Handle Aiming phase (only if player is in the round)
+				if newState == "Aiming" and IsLocalPlayerInRound() then
 					StartAiming()
 				elseif previousState == "Aiming" and newState ~= "Aiming" then
 					StopAiming()
@@ -383,8 +425,8 @@ function AimController:Init()
 				end
 			end)
 
-			-- Check if we're already in aiming state
-			if lastKnownState == "Aiming" then
+			-- Check if we're already in aiming state (only if player is in the round)
+			if lastKnownState == "Aiming" and IsLocalPlayerInRound() then
 				StartAiming()
 			elseif lastKnownState == "Revealing" then
 				StartReveal()

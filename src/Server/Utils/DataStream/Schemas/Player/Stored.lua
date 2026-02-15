@@ -54,6 +54,12 @@ return {
 	},
 
 	Spins = 0, -- Number of spins available
+	PrizeWheel = {
+		LastSpin = 0, -- os.time() of last wheel spin
+		ProgressiveTier = 1, -- Current progressive reward tier index
+		ProgressiveSpins = 0, -- Spins accumulated toward current progressive tier
+		ProgressiveVersion = 1, -- Config version used for progressive reset
+	},
 
 	DailyRewards = {
 		CurrentDay = 1, -- Current day to claim (1-7)

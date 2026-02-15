@@ -244,6 +244,20 @@ function UIController:ToggleWindow(windowName)
 	end
 end
 
+function UIController:CloseAllWindows()
+	for windowName in pairs(_OpenWindows) do
+		self:CloseWindow(windowName)
+	end
+end
+
+function UIController:ShowOverlay()
+	ShowOverlayEffects()
+end
+
+function UIController:HideOverlay()
+	HideOverlayEffects()
+end
+
 -- Initializers --
 function UIController:Init()
 	DebugLog("Initializing...")
@@ -252,6 +266,7 @@ function UIController:Init()
 	SetupWindow("IndexWindow")
 	SetupWindow("RankWindow")
 	SetupWindow("SkinShopWindow")
+	SetupWindow("PrizeWheelWindow")
 end
 
 -- Return Module --
