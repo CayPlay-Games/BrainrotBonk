@@ -55,5 +55,5 @@ return TableHelper:DeepFreeze({
 	PHYSICS_BOX_COLOR = Color3.fromRGB(255, 255, 255), -- Default white (skin covers it)
 
 	-- Lobby settings
-	LOBBY_SPAWN_POSITION = Vector3.new(125.528, 161.205, -34.834), -- Where players spawn in lobby
+	LOBBY_SPAWN_POSITION = Vector3.new(125.528, 165, -34.834), -- Where players spawn in lobby
 })
