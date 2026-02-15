@@ -32,6 +32,7 @@ local MapService = shared("MapService")
 local MapsConfig = shared("MapsConfig")
 local SkinService = shared("SkinService")
 local PickMapService = shared("PickMapService")
+local PhysicsService = shared("PhysicsService")
 
 -- Object References --
 local SubmitAimRemoteEvent = GetRemoteEvent("SubmitAim")
@@ -724,6 +725,10 @@ local function EnterLaunching()
 						0,
 						direction.Z * velocityMagnitude
 					)
+
+					-- Register with PhysicsService for custom collision handling
+					PhysicsService:RegisterPhysicsBox(hrp)
+
 					DebugLog(player.Name, "launched with velocity", velocityMagnitude)
 				end
 			end
@@ -740,8 +745,11 @@ local function EnterResolution()
 	DebugLog("Entering Resolution state")
 
 	local resolutionStartTime = tick()
-	local decayRate = RoundConfig.CURLING_DECAY_RATE or 0.98
+	local baseDecayRate = RoundConfig.CURLING_DECAY_RATE or 0.995
 	local minSpeed = RoundConfig.CURLING_MIN_SPEED or 0.3
+
+	-- Track last frame time for frame-rate independent decay
+	local lastFrameTime = tick()
 
 	-- Monitor until players settle or timeout
 	local checkConnection
@@ -751,18 +759,26 @@ local function EnterResolution()
 			return
 		end
 
-		local elapsed = tick() - resolutionStartTime
+		-- Calculate delta time for frame-rate independent decay
+		local currentTime = tick()
+		local deltaTime = currentTime - lastFrameTime
+		lastFrameTime = currentTime
+
+		local elapsed = currentTime - resolutionStartTime
 
 		-- Check win condition
 		local aliveCount = GetAliveCount()
 		if aliveCount <= 1 then
 			checkConnection:Disconnect()
+			PhysicsService:ClearAll()
 			TransitionTo(States.RoundEnd)
 			return
 		end
 
+		-- Frame-rate independent decay: decayRate^(deltaTime * 60) normalizes to 60fps
+		local frameDecay = baseDecayRate ^ (deltaTime * 60)
+
 		-- Apply curling stone physics - decay velocity each frame
-		-- Using AssemblyLinearVelocity so Roblox physics handles collisions naturally
 		local allSettled = true
 		for player in pairs(_AlivePlayers) do
 			local character = player.Character
@@ -775,7 +791,7 @@ local function EnterResolution()
 
 					if speed > minSpeed then
 						-- Decay horizontal velocity (simulates ice friction)
-						local newHorizontalVel = horizontalVel * decayRate
+						local newHorizontalVel = horizontalVel * frameDecay
 						hrp.AssemblyLinearVelocity = Vector3.new(
 							newHorizontalVel.X,
 							currentVel.Y, -- Preserve vertical velocity for gravity
@@ -793,6 +809,7 @@ local function EnterResolution()
 		-- If settled or timeout, go back to aiming or end round
 		if allSettled or elapsed > RoundConfig.Timers.RESOLUTION_TIMEOUT then
 			checkConnection:Disconnect()
+			PhysicsService:ClearAll()
 
 			if aliveCount <= 1 then
 				TransitionTo(States.RoundEnd)
@@ -807,6 +824,9 @@ end
 
 local function EnterRoundEnd()
 	DebugLog("Entering RoundEnd state")
+
+	-- Clear all physics registrations
+	PhysicsService:ClearAll()
 
 	-- Reset round number
 	_RoundNumber = 0
@@ -952,6 +972,15 @@ function RoundService:EliminatePlayer(player, eliminatedBy)
 	end
 
 	DebugLog(player.DisplayName, "eliminated by:", eliminatedBy)
+
+	-- Unregister from PhysicsService before cleanup
+	local character = player.Character
+	if character then
+		local hrp = character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			PhysicsService:UnregisterPhysicsBox(hrp)
+		end
+	end
 
 	-- Remove from alive players
 	_AlivePlayers[player] = nil
