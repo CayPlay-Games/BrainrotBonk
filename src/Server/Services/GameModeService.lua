@@ -18,12 +18,12 @@ local MapsConfig = shared("MapsConfig")
 
 -- Game Mode Modules
 local ClassicMode = shared("ClassicMode")
+local DeathMatchMode = shared("DeathMatchMode")
 
 -- Game modes registry
 local GameModes = {
 	Classic = ClassicMode,
-	-- Add new modes here:
-	-- Survival = shared("SurvivalMode"),
+	DeathMatch = DeathMatchMode,
 }
 
 -- Private Variables --

@@ -17,16 +17,17 @@ return TableHelper:DeepFreeze({
 		Classic = {
 			DisplayName = "Classic",
 			Description = "Map shrinks after each round",
-			-- Mode-specific settings
 			Settings = {
-				ShrinkPercentage = 0.10, -- 10% shrink per round
-				MinimumScale = 0.5, -- Don't shrink below 50%
-				ShrinkDuration = 1.5, -- Seconds for shrink animation
-				ShrinkEasing = "Quad", -- TweenService easing style
+				ShrinkPercentage = 0.10,
+				MinimumScale = 0.5,
+				ShrinkDuration = 1.5,
+				ShrinkEasing = "Quad",
 			},
 		},
-		-- Future modes can be added here:
-		-- Survival = { ... },
-		-- KingOfTheHill = { ... },
+		DeathMatch = {
+			DisplayName = "Death Match",
+			Description = "Last player standing wins",
+			Settings = {},
+		},
 	},
 })
