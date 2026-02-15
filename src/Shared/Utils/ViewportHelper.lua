@@ -3,7 +3,7 @@
 
 	Description:
 		Utility for working with ViewportFrames.
-		Calculates optimal camera distance for models of varying sizes.
+		Provides camera management, model display, and viewport clearing.
 --]]
 
 local ViewportHelper = {}
@@ -11,6 +11,30 @@ local ViewportHelper = {}
 -- Default settings
 local DEFAULT_FOV = 50
 local DEFAULT_PADDING = 1.2 -- 20% padding around the model
+
+-- Clears all models and parts from a viewport (preserves camera)
+function ViewportHelper.Clear(viewport)
+	for _, child in viewport:GetChildren() do
+		if child:IsA("Model") or child:IsA("BasePart") then
+			child:Destroy()
+		end
+	end
+end
+
+-- Gets or creates a camera for a viewport
+-- Always sets CurrentCamera and resets CFrame to origin
+function ViewportHelper.GetCamera(viewport, fov)
+	fov = fov or DEFAULT_FOV
+	local camera = viewport:FindFirstChildOfClass("Camera")
+	if not camera then
+		camera = Instance.new("Camera")
+		camera.FieldOfView = fov
+		camera.Parent = viewport
+	end
+	viewport.CurrentCamera = camera
+	camera.CFrame = CFrame.new(0, 0, 0)
+	return camera
+end
 
 -- Calculates the distance needed to fit a model in a viewport
 -- @param model: The model to calculate distance for
@@ -39,35 +63,23 @@ end
 -- Sets up a model in a viewport with automatic distance calculation
 -- @param viewport: The ViewportFrame
 -- @param model: The model to display (will be cloned)
--- @param camera: The camera (optional, will create if not provided)
+-- @param clearFirst: Whether to clear existing models first (optional, defaults to true)
 -- @return clone: The cloned model in the viewport
 -- @return camera: The camera used
-function ViewportHelper.DisplayModel(viewport, model, camera)
-	-- Create camera if not provided
-	if not camera then
-		camera = viewport:FindFirstChildOfClass("Camera")
-		if not camera then
-			camera = Instance.new("Camera")
-			camera.FieldOfView = DEFAULT_FOV
-			camera.Parent = viewport
-			viewport.CurrentCamera = camera
-		end
+-- @return distance: The calculated distance
+function ViewportHelper.DisplayModel(viewport, model, clearFirst)
+	if clearFirst ~= false then
+		ViewportHelper.Clear(viewport)
 	end
 
-	-- Clone and parent model
+	local camera = ViewportHelper.GetCamera(viewport)
 	local clone = model:Clone()
 	clone.Parent = viewport
 
-	-- Calculate distance and position
 	local distance = ViewportHelper.CalculateDistance(clone, camera.FieldOfView)
-
-	-- Set camera at origin
-	camera.CFrame = CFrame.new(0, 0, 0)
-
-	-- Position model in front of camera
 	clone:PivotTo(CFrame.new(0, 0, -distance))
 
-	return clone, camera
+	return clone, camera, distance
 end
 
 return ViewportHelper
