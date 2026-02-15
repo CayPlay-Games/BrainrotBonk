@@ -39,13 +39,14 @@ return TableHelper:DeepFreeze({
 	AIM_SUBMIT_GRACE_PERIOD = 1, -- Seconds to wait for aim submissions after timer ends
 
 	-- Launch physics
-	LAUNCH_FORCE_MULTIPLIER = 6, -- Power * this = velocity magnitude
+	LAUNCH_FORCE_MULTIPLIER = 3, -- Power * this = launch speed scalar (impulse-based)
 
 	-- Curling stone physics settings
-	SLIPPERY_ELASTICITY = 0.5, -- Moderate: momentum transfer without excessive bounce
-	CURLING_DECAY_RATE = 0.99, -- Per-frame velocity multiplier (higher = longer slides)
-	CURLING_MAX_FORCE = 100000, -- LinearVelocity max force (kept for reference)
-	CURLING_MIN_SPEED = 0.5, -- Below this speed, stop completely (prevents drifting)
+	SLIPPERY_FRICTION = 0.02, -- Low map friction for smooth sliding
+	SLIPPERY_ELASTICITY = 0.06, -- Light bounce keeps clashes punchy without pinballing
+	CURLING_HORIZONTAL_DRAG = 1.25, -- Studs/s^2 horizontal slowdown applied server-side
+	CURLING_SETTLE_SPEED = 0.25, -- Speeds below this are snapped to rest
+	CURLING_MIN_SPEED = 0.5, -- Legacy fallback for older logic paths
 	ANGULAR_RESISTANCE = 10000, -- MaxTorque for rotation control (resists wild spinning)
 
 	-- Physics box settings (standardized player body during rounds)

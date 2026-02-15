@@ -60,7 +60,7 @@ local function CreatePhysicsBox(player, spawnCFrame)
 	-- Set physics properties (high friction so it doesn't slide on its own - LinearVelocity controls movement)
 	rootPart.CustomPhysicalProperties = PhysicalProperties.new(
 		RoundConfig.PHYSICS_BOX_DENSITY, -- Density
-		1, -- Friction (high - we control movement via LinearVelocity)
+		RoundConfig.SLIPPERY_FRICTION, -- Friction aligned with map ice surface
 		RoundConfig.SLIPPERY_ELASTICITY, -- Elasticity for collisions
 		100, -- FrictionWeight
 		1 -- ElasticityWeight
