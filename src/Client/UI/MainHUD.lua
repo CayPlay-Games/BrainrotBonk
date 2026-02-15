@@ -220,6 +220,8 @@ local function SetupUI()
 
 	_PatchNotesButton.MouseButton1Click:Connect(function()
 		DebugLog("Patch Notes clicked")
+		local UIController = shared("UIController")
+		UIController:ToggleWindow("PatchNotesWindow")
 	end)
 
 	DebugLog("UI setup complete")
