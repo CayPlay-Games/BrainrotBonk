@@ -67,6 +67,10 @@ local _SubmittedAims = {}
 local _AlivePlayers = {}
 -- KillPart touch connection
 local _KillPartConnection = nil
+-- Per-player character touch tracking connections
+local _CharacterTouchConnections = {}
+-- Last collision source that could have caused an elimination
+local _LastHitBy = {} -- victim -> { Attacker = entity, Time = number }
 -- Current map spawn points (array of CFrames)
 local _CurrentSpawnPoints = {}
 -- Dummy players for testing (DEBUG_MODE only)
@@ -151,6 +155,80 @@ local function GetAliveCount()
 		count = count + 1
 	end
 	return count
+end
+
+local function ResolveEntityFromCharacterModel(model)
+	if not model then
+		return nil
+	end
+
+	for entity in pairs(_AlivePlayers) do
+		if entity.Character == model then
+			return entity
+		end
+	end
+
+	return nil
+end
+
+local function CleanupCharacterTouchTracking()
+	for _, connection in pairs(_CharacterTouchConnections) do
+		connection:Disconnect()
+	end
+	table.clear(_CharacterTouchConnections)
+	table.clear(_LastHitBy)
+end
+
+local function SetupCharacterTouchTracking()
+	CleanupCharacterTouchTracking()
+
+	for victim in pairs(_AlivePlayers) do
+		local character = victim.Character
+		if character then
+			local rootPart = character:FindFirstChild("HumanoidRootPart")
+			if rootPart then
+				_CharacterTouchConnections[victim] = rootPart.Touched:Connect(function(otherPart)
+					-- Attribution only matters while entities are actively moving/colliding.
+					if _CurrentState ~= States.Launching and _CurrentState ~= States.Resolution then
+						return
+					end
+
+					local otherModel = otherPart and otherPart:FindFirstAncestorOfClass("Model")
+					if not otherModel or otherModel == character then
+						return
+					end
+
+					local attacker = ResolveEntityFromCharacterModel(otherModel)
+					if not attacker or attacker == victim or not _AlivePlayers[attacker] then
+						return
+					end
+
+					_LastHitBy[victim] = {
+						Attacker = attacker,
+						Time = tick(),
+					}
+				end)
+			end
+		end
+	end
+end
+
+local function ResolveEliminatedBy(player, eliminatedBy)
+	if eliminatedBy == "Fall" or eliminatedBy == "Death" then
+		local hitData = _LastHitBy[player]
+		if hitData then
+			local attacker = hitData.Attacker
+			local age = tick() - hitData.Time
+			-- Keep a short window so a delayed fall can still credit the shove.
+			if attacker and attacker ~= player and age <= 4 then
+				return tostring(attacker.UserId)
+			end
+		end
+
+		return "Slip"
+	end
+
+	return eliminatedBy
 end
 
 -- Sets up KillPart detection for the current map
@@ -359,6 +437,8 @@ local TransitionTo
 
 local function EnterWaiting()
 	DebugLog("Entering Waiting state")
+	CleanupKillPartDetection()
+	CleanupCharacterTouchTracking()
 
 	-- Reset all round data
 	_RoundPlayers = {}
@@ -635,6 +715,7 @@ local function EnterSpawning()
 
 	-- Setup KillPart detection for eliminations
 	SetupKillPartDetection()
+	SetupCharacterTouchTracking()
 
 	UpdateDataStream()
 
@@ -895,6 +976,7 @@ local function EnterRoundEnd()
 
 	-- Cleanup KillPart detection
 	CleanupKillPartDetection()
+	CleanupCharacterTouchTracking()
 
 	-- After round end duration, go back to waiting
 	StartTimer(RoundConfig.Timers.ROUND_END_DURATION, function()
@@ -1006,10 +1088,12 @@ function RoundService:EliminatePlayer(player, eliminatedBy)
 		return -- Already eliminated
 	end
 
+	eliminatedBy = ResolveEliminatedBy(player, eliminatedBy)
 	DebugLog(player.DisplayName, "eliminated by:", eliminatedBy)
 
 	-- Remove from alive players
 	_AlivePlayers[player] = nil
+	_LastHitBy[player] = nil
 
 	-- Update round player data
 	if _RoundPlayers[player] then
@@ -1123,6 +1207,7 @@ function RoundService:Init()
 		if _RoundPlayers[player] then
 			self:EliminatePlayer(player, "Disconnect")
 		end
+		_LastHitBy[player] = nil
 	end)
 
 	-- Handle character added (for respawns and death detection)
