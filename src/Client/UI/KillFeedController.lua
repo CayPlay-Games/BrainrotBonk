@@ -30,7 +30,6 @@ local FALLBACK_SKULL_IMAGE = "rbxassetid://124432953529217"
 local _HUD = nil
 local _RightFrame = nil
 local _Template = nil
-local _DefaultPlayer2Image = nil
 local _Entries = {}
 local _LastPlayersSnapshot = {}
 local _ProcessedEliminations = {}
@@ -161,8 +160,7 @@ local function PushFeedEntry(actorUserId, targetUserId, isSlip, playersSnapshot)
 	SetPlayerSlot(player1Frame, actorUserId, actorName)
 
 	if isSlip then
-		local skullImage = _DefaultPlayer2Image or FALLBACK_SKULL_IMAGE
-		SetPlayerSlot(player2Frame, nil, "", skullImage)
+		SetPlayerSlot(player2Frame, nil, "", FALLBACK_SKULL_IMAGE)
 		if actionLabel and actionLabel:IsA("TextLabel") then
 			actionLabel.Text = "slipped off"
 		end
@@ -232,11 +230,6 @@ local function SetupUI()
 	if not _Template then
 		warn("[KillFeedController] _Template not found in RightFrame")
 		return false
-	end
-
-	local player2Frame = _Template:FindFirstChild("Player2")
-	if player2Frame and (player2Frame:IsA("ImageLabel") or player2Frame:IsA("ImageButton")) then
-		_DefaultPlayer2Image = player2Frame.Image
 	end
 
 	_Template.Visible = false
