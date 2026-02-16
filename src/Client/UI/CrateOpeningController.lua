@@ -2,8 +2,8 @@
 	CrateOpeningController.lua
 
 	Description:
-		Manages the crate/egg opening animation after purchasing a skin box.
-		Shows egg model, plays roulette animation through possible skins,
+		Manages the crate opening animation after purchasing a skin box.
+		Shows crate icon, plays roulette animation through possible skins,
 		and reveals the result.
 --]]
 
@@ -66,9 +66,9 @@ local STATE_ANIMATING = "Animating"
 local STATE_REVEALING = "Revealing"
 
 -- Private Variables --
-local _ScreenGui, _Background, _EggContainer, _EggViewport, _ClickPrompt
+local _ScreenGui, _Background, _CrateContainer, _Icon, _ClickPrompt
 local _RouletteContainer, _SkinViewport, _SkinName, _ClosePrompt
-local _SkinsFolder, _EggsFolder
+local _SkinsFolder
 local _CurrentState = STATE_IDLE
 local _PendingResult = nil
 local _ClickConnection = nil
@@ -78,13 +78,6 @@ local _IsSetup = false
 
 -- Forward Declarations --
 local Close, WaitForClick, RevealWinner
-
--- Debug Logging --
-local function DebugLog(...)
-	if RoundConfig.DEBUG_LOG_STATE_CHANGES then
-		print("[CrateOpeningController]", ...)
-	end
-end
 
 -- Blackout/Restore Textures --
 local function BlackoutModel(model)
@@ -204,24 +197,6 @@ local function GetSkinModel(skinId, mutation)
 	return _SkinsFolder:FindFirstChild(skinConfig.ModelName)
 end
 
-local function GetEggModel(boxId)
-	local boxConfig = SkinBoxesConfig.Boxes[boxId]
-	if not boxConfig then return nil end
-
-	if boxConfig.EggModel and _EggsFolder then
-		local eggModel = _EggsFolder:FindFirstChild(boxConfig.EggModel)
-		if eggModel then return eggModel end
-	end
-
-	if _EggsFolder then
-		return _EggsFolder:FindFirstChild("Tier" .. boxConfig.Tier)
-			or _EggsFolder:FindFirstChild("Egg")
-			or _EggsFolder:FindFirstChild("DefaultEgg")
-	end
-
-	return nil
-end
-
 local function ScaleModel(model, scale)
 	if model.ScaleTo then
 		model:ScaleTo(scale)
@@ -237,7 +212,6 @@ end
 local function PlayRouletteAnimation(boxId, resultSkinId, resultMutation)
 	local boxConfig = SkinBoxesConfig.Boxes[boxId]
 	if not boxConfig or #boxConfig.Skins == 0 then
-		DebugLog("Invalid box config for roulette")
 		return
 	end
 
@@ -253,10 +227,8 @@ local function PlayRouletteAnimation(boxId, resultSkinId, resultMutation)
 	local skinCount = #boxConfig.Skins
 	local totalCycles = math.random(MIN_CYCLES, MAX_CYCLES) + resultIndex
 
-	DebugLog("Starting roulette:", totalCycles, "cycles, landing on index", resultIndex)
-
 	-- UI state
-	_EggContainer.Visible = false
+	_CrateContainer.Visible = false
 	_RouletteContainer.Visible = true
 	_ClosePrompt.Visible = false
 	_SkinName.Text = "???"
@@ -329,7 +301,6 @@ end
 RevealWinner = function(skinId, model, originalTextures, distance)
 	_CurrentState = STATE_REVEALING
 	_WinnerModel = model
-	DebugLog("Revealing winner:", skinId)
 
 	if originalTextures then
 		RestoreModelTextures(originalTextures)
@@ -382,11 +353,8 @@ end
 -- Show/Close --
 local function ShowCrateOpening(boxId, resultSkinId, resultMutation)
 	if not _IsSetup then
-		DebugLog("UI not setup yet")
 		return
 	end
-
-	DebugLog("Showing crate opening for", boxId, "result:", resultSkinId, resultMutation)
 
 	_CurrentState = STATE_WAITING_CLICK
 	_PendingResult = { BoxId = boxId, SkinId = resultSkinId, Mutation = resultMutation }
@@ -396,18 +364,18 @@ local function ShowCrateOpening(boxId, resultSkinId, resultMutation)
 
 	_ScreenGui.Enabled = true
 	_Background.Visible = true
-	_EggContainer.Visible = true
+	_CrateContainer.Visible = true
 	_RouletteContainer.Visible = false
 	_ClosePrompt.Visible = false
 
 	ViewportHelper.Clear(_SkinViewport)
 
-	local eggModel = GetEggModel(boxId)
-	if eggModel then
-		ViewportHelper.DisplayModel(_EggViewport, eggModel)
+	local boxConfig = SkinBoxesConfig.Boxes[boxId]
+	if boxConfig and boxConfig.Icon then
+		_Icon.Image = boxConfig.Icon
 	end
 
-	_ClickPrompt.Text = "Click to hatch!"
+	_ClickPrompt.Text = "Click to open!"
 	_ClickPrompt.Visible = true
 	_SkinName.Text = ""
 	_SkinName.TextColor3 = Color3.new(1, 1, 1)
@@ -422,7 +390,6 @@ local function ShowCrateOpening(boxId, resultSkinId, resultMutation)
 end
 
 Close = function()
-	DebugLog("Closing crate opening")
 
 	_CurrentState = STATE_IDLE
 	_PendingResult = nil
@@ -442,11 +409,11 @@ Close = function()
 
 	_ScreenGui.Enabled = false
 	_Background.Visible = false
-	_EggContainer.Visible = false
+	_CrateContainer.Visible = false
 	_RouletteContainer.Visible = false
 	_ClosePrompt.Visible = false
 
-	ViewportHelper.Clear(_EggViewport)
+	_Icon.Image = ""
 	ViewportHelper.Clear(_SkinViewport)
 end
 
@@ -456,25 +423,22 @@ local function SetupUI(screenGui)
 
 	local assets = ReplicatedStorage:WaitForChild("Assets")
 	_SkinsFolder = assets:WaitForChild("Skins")
-	_EggsFolder = assets:FindFirstChild("Eggs")
 
 	_ScreenGui = screenGui
 	_ScreenGui.Enabled = false
 
 	_Background = _ScreenGui:WaitForChild("Background")
-	_EggContainer = _ScreenGui:WaitForChild("EggContainer")
-	_EggViewport = _EggContainer:WaitForChild("EggViewport")
-	_ClickPrompt = _EggContainer:WaitForChild("ClickPrompt")
+	_CrateContainer = _ScreenGui:WaitForChild("CrateContainer")
+	_Icon = _CrateContainer:WaitForChild("Icon")
+	_ClickPrompt = _CrateContainer:WaitForChild("ClickPrompt")
 	_RouletteContainer = _ScreenGui:WaitForChild("RouletteContainer")
 	_SkinViewport = _RouletteContainer:WaitForChild("SkinViewport")
 	_SkinName = _RouletteContainer:WaitForChild("SkinName")
 	_ClosePrompt = _ScreenGui:WaitForChild("ClosePrompt")
 
-	ViewportHelper.GetCamera(_EggViewport)
 	ViewportHelper.GetCamera(_SkinViewport)
 
 	_IsSetup = true
-	DebugLog("UI setup complete")
 end
 
 -- Public API --
@@ -491,14 +455,11 @@ function CrateOpeningController:IsOpen()
 end
 
 function CrateOpeningController:Init()
-	DebugLog("Initializing...")
 
 	UIController:WhenScreenGuiReady("CrateOpening", function(screenGui)
 		SetupUI(screenGui)
 
 		SkinBoxResultRemoteEvent.OnClientEvent:Connect(function(result)
-			DebugLog("Received SkinBoxResult:", result)
-
 			if result.Success then
 				ShowCrateOpening(result.BoxId, result.SkinId, result.Mutation)
 			else

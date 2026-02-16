@@ -29,6 +29,7 @@ SkinBoxesConfig.Boxes = {
 		LayoutOrder = 1,
 		RobuxPrice = 75,
 		CoinsPrice = 9,
+		Icon = "rbxassetid://91800965112289",
 		Skins = {
 			{ SkinId = "PipiKiwi", Weight = 50 },
 			{ SkinId = "SvininaBombardino", Weight = 50 },
@@ -40,6 +41,7 @@ SkinBoxesConfig.Boxes = {
 		LayoutOrder = 2,
 		RobuxPrice = 150,
 		CoinsPrice = 19,
+		Icon = "rbxassetid://91800965112289",
 		Skins = {
 			{ SkinId = "BanditoBobrito", Weight = 14.2 },
 			{ SkinId = "BonecaAmbalabu", Weight = 14.2 },
@@ -55,7 +57,7 @@ SkinBoxesConfig.Boxes = {
 		DisplayName = "Certified Bonker Crate",
 		Tier = 3,
 		NotPurchasable = true, -- Cannot be bought in shop
-		EggModel = "GroupExclusive",
+		Icon = "rbxassetid://91800965112289",
 		Skins = {
 			{ SkinId = "TrippiTroppi", Weight = 34 },
 			{ SkinId = "GangsterFootera", Weight = 33 },
