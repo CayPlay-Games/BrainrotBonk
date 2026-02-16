@@ -15,7 +15,6 @@ local Players = game:GetService("Players")
 local ClientDataStream = shared("ClientDataStream")
 local RoundConfig = shared("RoundConfig")
 
--- Object References --
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
