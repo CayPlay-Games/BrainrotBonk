@@ -22,7 +22,7 @@ local _ActivePlayers = {} -- HRP -> { TouchConnection = Connection }
 local _CollisionCooldowns = {} -- "id1_id2" -> timestamp
 
 -- Signals --
-PhysicsService.CollisionOccurred = nil -- Initialized in Init()
+PhysicsService.CollisionOccurred = nil
 
 -- Internal Functions --
 
@@ -147,7 +147,6 @@ local function HandleCollision(hrp1, hrp2)
 		PhysicsService.CollisionOccurred:Fire(hrp1.Parent, hrp2.Parent, impactForce)
 	end
 
-	DebugLog(id1, "collided with", id2, "- impact force:", math.floor(impactForce))
 end
 
 -- API Functions --
@@ -169,7 +168,6 @@ function PhysicsService:RegisterPhysicsBox(hrp)
 		TouchConnection = connection,
 	}
 
-	DebugLog("Registered physics box for", GetEntityId(hrp))
 end
 
 -- Unregisters a physics box
@@ -180,7 +178,6 @@ function PhysicsService:UnregisterPhysicsBox(hrp)
 			data.TouchConnection:Disconnect()
 		end
 		_ActivePlayers[hrp] = nil
-		DebugLog("Unregistered physics box for", GetEntityId(hrp))
 	end
 end
 
@@ -193,7 +190,6 @@ function PhysicsService:ClearAll()
 	end
 	_ActivePlayers = {}
 	_CollisionCooldowns = {}
-	DebugLog("Cleared all physics registrations")
 end
 
 -- Gets count of active physics boxes
@@ -207,8 +203,6 @@ end
 
 -- Initializers --
 function PhysicsService:Init()
-	DebugLog("Initializing...")
-
 	-- Create collision signal
 	PhysicsService.CollisionOccurred = Signal.new()
 
@@ -222,7 +216,6 @@ function PhysicsService:Init()
 		end
 	end)
 
-	DebugLog("Initialized")
 end
 
 -- Return Module --
