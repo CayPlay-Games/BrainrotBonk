@@ -177,6 +177,113 @@ local SkinsByRarity = {
 			Icon = "rbxassetid://139488764717715",
 		},
 	},
+
+	Rare = {
+		CappuccinoAssassino = {
+			DisplayName = "Cappuccino Assassino",
+			Description = "Cappuccino Assassino Skin",
+			Rarity = Rarities.Rare.Name,
+			ModelName = "CappuccinoAssassino",
+			Icon = "rbxassetid://78907462743918",
+		},
+		BrrBrrPatapim = {
+			DisplayName = "Brr Brr Patapim",
+			Description = "Brr Brr Patapim Skin",
+			Rarity = Rarities.Rare.Name,
+			ModelName = "BrrBrrPatapim",
+			Icon = "rbxassetid://72546639386572",
+		},
+		AvocadiniGuffo = {
+			DisplayName = "Avocadini Guffo",
+			Description = "Avocadini Guffo Skin",
+			Rarity = Rarities.Rare.Name,
+			ModelName = "AvocadiniGuffo",
+			Icon = "rbxassetid://76742828511811",
+		},
+		TrulimeroTrulicina = {
+			DisplayName = "Trulimero Trulicina",
+			Description = "Trulimero Trulicina Skin",
+			Rarity = Rarities.Rare.Name,
+			ModelName = "TrulimeroTrulicina",
+			Icon = "rbxassetid://129902898843375",
+		},
+		BambiniCrostini = {
+			DisplayName = "Bambini Crostini",
+			Description = "Bambini Crostini Skin",
+			Rarity = Rarities.Rare.Name,
+			ModelName = "BambiniCrostini",
+			Icon = "rbxassetid://123596596749903",
+		},
+		BananitoDelfinito = {
+			DisplayName = "Bananito Delfinito",
+			Description = "Bananito Delfinito Skin",
+			Rarity = Rarities.Rare.Name,
+			ModelName = "BananitoDelfinito",
+			Icon = "rbxassetid://91207034524958",
+		},
+		BrrBicusDicus = {
+			DisplayName = "Brr Bicus Dicus",
+			Description = "Brr Bicus Dicus Skin",
+			Rarity = Rarities.Rare.Name,
+			ModelName = "BrrBicusDicus",
+			Icon = "rbxassetid://127967015382596",
+		},
+
+	},
+
+	Epic = {
+		StrawberrelliFlamingelli = {
+			DisplayName = "Strawberrelli Flamingelli",
+			Description = "Strawberrelli Flamingelli Skin",
+			Rarity = Rarities.Epic.Name,
+			ModelName = "StrawberrelliFlamingelli",
+			Icon = "rbxassetid://113926903554922",
+		},
+		GlorboFruttodrillo = {
+			DisplayName = "Glorbo Fruttodrillo",
+			Description = "Glorbo Fruttodrillo Skin",
+			Rarity = Rarities.Epic.Name,
+			ModelName = "GlorboFruttodrillo",
+			Icon = "rbxassetid://113771785621066",
+		},
+		LioneloCactuseli = {
+			DisplayName = "Lionelo Cactuseli",
+			Description = "Lionelo Cactuseli Skin",
+			Rarity = Rarities.Epic.Name,
+			ModelName = "LioneloCactuseli",
+			Icon = "rbxassetid://105090869186690",
+		},
+		ChefCrabracadabra = {
+			DisplayName = "Chef Crabracadabra",
+			Description = "Chef Crabracadabra Skin",
+			Rarity = Rarities.Epic.Name,
+			ModelName = "ChefCrabracadabra",
+			Icon = "rbxassetid://115832073112337",
+		},
+		BalerinaCapucina = {
+			DisplayName = "Balerina Capucina",
+			Description = "Balerina Capucina Skin",
+			Rarity = Rarities.Epic.Name,
+			ModelName = "BalerinaCapucina",
+			Icon = "rbxassetid://116491799841976",
+		},
+		ChimpanziniBananini = {
+			DisplayName = "Chimpanzini Bananini",
+			Description = "Chimpanzini Bananini Skin",
+			Rarity = Rarities.Epic.Name,
+			ModelName = "ChimpanziniBananini",
+			Icon = "rbxassetid://125783544143079",
+		},
+		BurbaloniLoliloli = {
+			DisplayName = "Burbaloni Loliloli",
+			Description = "Burbaloni Loliloli Skin",
+			Rarity = Rarities.Epic.Name,
+			ModelName = "BurbaloniLoliloli",
+			Icon = "rbxassetid://80805326984040",
+		},
+
+	},
+	
 	Legendary = {
 		KarkerkarKurkur = {
 			DisplayName = "Karkerkar Kurkur",
