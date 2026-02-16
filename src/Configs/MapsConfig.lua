@@ -11,33 +11,39 @@ local TableHelper = shared("TableHelper")
 return TableHelper:DeepFreeze({
 	-- Map definitions
 	Maps = {
-		Blender = {
-			DisplayName = "Blender",
-			MinPlayers = 4,
-			MaxPlayers = 12,
-			GameMode = "Classic",
-		},
-		ElectroTub = {
-			DisplayName = "Electro Tub",
-			MinPlayers = 4,
-			MaxPlayers = 12,
-			GameMode = "Classic",
-		},
-		Castle = {
-			DisplayName = "Castle",
-			MinPlayers = 4,
-			MaxPlayers = 12,
-			GameMode = "DeathMatch",
-		},
-		Volcano = {
-			DisplayName = "Volcano",
-			MinPlayers = 4,
-			MaxPlayers = 12,
-			GameMode = "Classic",
-		},
-		SoupPot = {
-			DisplayName = "Soup Pot",
-			MinPlayers = 4,
+		-- Blender = {
+		-- 	DisplayName = "Blender",
+		-- 	MinPlayers = 4,
+		-- 	MaxPlayers = 12,
+		-- 	GameMode = "Classic",
+		-- },
+		-- ElectroTub = {
+		-- 	DisplayName = "Electro Tub",
+		-- 	MinPlayers = 4,
+		-- 	MaxPlayers = 12,
+		-- 	GameMode = "Classic",
+		-- },
+		-- Castle = {
+		-- 	DisplayName = "Castle",
+		-- 	MinPlayers = 4,
+		-- 	MaxPlayers = 12,
+		-- 	GameMode = "DeathMatch",
+		-- },
+		-- Volcano = {
+		-- 	DisplayName = "Volcano",
+		-- 	MinPlayers = 4,
+		-- 	MaxPlayers = 12,
+		-- 	GameMode = "Classic",
+		-- },
+		-- SoupPot = {
+		-- 	DisplayName = "Soup Pot",
+		-- 	MinPlayers = 4,
+		-- 	MaxPlayers = 12,
+		-- 	GameMode = "DeathMatch",
+		-- },
+		PhysicsTest = {
+			DisplayName = "Physics Test",
+			MinPlayers = 2,
 			MaxPlayers = 12,
 			GameMode = "DeathMatch",
 		},

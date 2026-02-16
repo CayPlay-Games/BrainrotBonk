@@ -16,6 +16,7 @@ local RunService = game:GetService("RunService")
 -- Dependencies --
 local RoundConfig = shared("RoundConfig")
 local Signal = shared("Signal")
+local DataStream = shared("DataStream")
 
 -- Private Variables --
 local _ActivePlayers = {} -- HRP -> { TouchConnection = Connection }
@@ -30,6 +31,15 @@ local function DebugLog(...)
 	if RoundConfig.DEBUG_LOG_STATE_CHANGES then
 		print("[PhysicsService]", ...)
 	end
+end
+
+-- Gets a physics value from DebugPhysics DataStream (for runtime tuning)
+local function GetDebugPhysics(key)
+	local debugPhysics = DataStream.DebugPhysics
+	if debugPhysics and debugPhysics[key] then
+		return debugPhysics[key]:Read()
+	end
+	return nil
 end
 
 -- Get a unique identifier for an HRP
@@ -54,7 +64,7 @@ end
 local function IsOnCooldown(id1, id2)
 	local key = GetCollisionKey(id1, id2)
 	local lastTime = _CollisionCooldowns[key]
-	if lastTime and (tick() - lastTime) < RoundConfig.COLLISION_COOLDOWN then
+	if lastTime and (tick() - lastTime) < (GetDebugPhysics("COLLISION_COOLDOWN") or 0.15) then
 		return true
 	end
 	return false
@@ -118,7 +128,7 @@ local function HandleCollision(hrp1, hrp2)
 
 	-- Check if collision is significant (at least one moving fast enough)
 	local relSpeed = (hVel1 - hVel2).Magnitude
-	if relSpeed < RoundConfig.COLLISION_MIN_SPEED then
+	if relSpeed < (GetDebugPhysics("COLLISION_MIN_SPEED") or 1.0) then
 		return
 	end
 
@@ -127,7 +137,7 @@ local function HandleCollision(hrp1, hrp2)
 	local mass2 = hrp2.AssemblyMass
 
 	-- Calculate new velocities
-	local restitution = RoundConfig.CURLING_COLLISION_RESTITUTION or 0.9
+	local restitution = GetDebugPhysics("CURLING_COLLISION_RESTITUTION") or 0.6
 	local newVel1, newVel2 = CalculateElasticCollision(
 		hrp1.Position, hVel1, mass1,
 		hrp2.Position, hVel2, mass2,
@@ -210,7 +220,7 @@ function PhysicsService:Init()
 	RunService.Heartbeat:Connect(function()
 		local now = tick()
 		for key, timestamp in pairs(_CollisionCooldowns) do
-			if (now - timestamp) > RoundConfig.COLLISION_COOLDOWN * 2 then
+			if (now - timestamp) > (GetDebugPhysics("COLLISION_COOLDOWN") or 0.15) * 2 then
 				_CollisionCooldowns[key] = nil
 			end
 		end

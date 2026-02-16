@@ -37,6 +37,7 @@ local PhysicsService = shared("PhysicsService")
 -- Object References --
 local SubmitAimRemoteEvent = GetRemoteEvent("SubmitAim")
 local ForceStartRoundRemoteEvent = GetRemoteEvent("ForceStartRound")
+local ForceEndRoundRemoteEvent = GetRemoteEvent("ForceEndRound")
 local ToggleAFKRemoteEvent = GetRemoteEvent("ToggleAFK")
 
 -- Constants --
@@ -93,6 +94,15 @@ local function DebugLog(...)
 	if RoundConfig.DEBUG_LOG_STATE_CHANGES then
 		print("[RoundService]", ...)
 	end
+end
+
+-- Gets a physics value from DebugPhysics DataStream (for runtime tuning)
+local function GetDebugPhysics(key)
+	local debugPhysics = DataStream.DebugPhysics
+	if debugPhysics and debugPhysics[key] then
+		return debugPhysics[key]:Read()
+	end
+	return nil
 end
 
 -- Updates the DataStream with current round state
@@ -297,7 +307,11 @@ local function CreateDummyPlayer(spawnCFrame)
 
 	local rootPart = Instance.new("Part")
 	rootPart.Name = "HumanoidRootPart"
-	rootPart.Size = RoundConfig.PHYSICS_BOX_SIZE
+	rootPart.Size = Vector3.new(
+		GetDebugPhysics("PHYSICS_BOX_SIZE_X") or 3.5,
+		GetDebugPhysics("PHYSICS_BOX_SIZE_Y") or 5,
+		GetDebugPhysics("PHYSICS_BOX_SIZE_Z") or 3.5
+	)
 	rootPart.Color = Color3.fromRGB(255, 100, 100) -- Red tint for dummies
 	rootPart.Material = Enum.Material.SmoothPlastic
 	rootPart.TopSurface = Enum.SurfaceType.Smooth
@@ -308,9 +322,9 @@ local function CreateDummyPlayer(spawnCFrame)
 
 	-- Set physics properties
 	rootPart.CustomPhysicalProperties = PhysicalProperties.new(
-		RoundConfig.PHYSICS_BOX_DENSITY,
+		GetDebugPhysics("PHYSICS_BOX_DENSITY") or 25,
 		1, -- Friction
-		RoundConfig.SLIPPERY_ELASTICITY,
+		GetDebugPhysics("SLIPPERY_ELASTICITY") or 0.3,
 		100,
 		1
 	)
@@ -665,6 +679,14 @@ end
 local function EnterAiming()
 	DebugLog("Entering Aiming state")
 
+	-- Update physics properties from debug values (allows runtime tuning between turns)
+	for entity in pairs(_AlivePlayers) do
+		if type(entity) ~= "table" then -- Skip dummies
+			SkinService:UpdatePhysicsBoxProperties(entity)
+		end
+	end
+	MapService:UpdateMapSurfacePhysics()
+
 	-- Clear any previous aims
 	_SubmittedAims = {}
 
@@ -798,7 +820,7 @@ local function EnterLaunching()
 					-- Set network ownership to server so velocity changes take effect
 					hrp:SetNetworkOwner(nil)
 
-					local velocityMagnitude = aim.Power * RoundConfig.LAUNCH_FORCE_MULTIPLIER
+					local velocityMagnitude = aim.Power * (GetDebugPhysics("LAUNCH_FORCE_MULTIPLIER") or 6)
 					local direction = aim.Direction.Unit
 					-- Apply velocity directly (XZ only, Y starts at 0)
 					hrp.AssemblyLinearVelocity = Vector3.new(
@@ -827,7 +849,6 @@ local function EnterResolution()
 
 	local resolutionStartTime = tick()
 	local baseDecayRate = RoundConfig.CURLING_DECAY_RATE or 0.995
-	local minSpeed = RoundConfig.CURLING_MIN_SPEED or 0.3
 
 	-- Track last frame time for frame-rate independent decay
 	local lastFrameTime = tick()
@@ -858,6 +879,9 @@ local function EnterResolution()
 
 		-- Frame-rate independent decay: decayRate^(deltaTime * 60) normalizes to 60fps
 		local frameDecay = baseDecayRate ^ (deltaTime * 60)
+
+		-- Read minSpeed dynamically so debug UI changes take effect immediately
+		local minSpeed = GetDebugPhysics("CURLING_MIN_SPEED") or 0.3
 
 		-- Apply curling stone physics - decay velocity each frame
 		local allSettled = true
@@ -1151,6 +1175,19 @@ function RoundService:ForceStartRound()
 	return false
 end
 
+-- Debug: Force end the current round immediately
+function RoundService:ForceEndRound()
+	if _CurrentState == States.Waiting then
+		DebugLog("ForceEndRound called but already in Waiting state")
+		return false
+	end
+
+	DebugLog("ForceEndRound: Forcing round to end from state", _CurrentState)
+	ClearTimer()
+	TransitionTo(States.RoundEnd)
+	return true
+end
+
 -- Initializers --
 function RoundService:Init()
 	DebugLog("Initializing...")
@@ -1167,6 +1204,12 @@ function RoundService:Init()
 			self:ForceStartRound()
 		end)
 	end
+
+	-- Force end round remote event (for debug physics UI)
+	ForceEndRoundRemoteEvent.OnServerEvent:Connect(function(player)
+		DebugLog("ForceEndRound requested by", player.DisplayName)
+		self:ForceEndRound()
+	end)
 
 	-- AFK toggle remote event
 	ToggleAFKRemoteEvent.OnServerEvent:Connect(function(player)

@@ -16,7 +16,7 @@ local Workspace = game:GetService("Workspace")
 -- Dependencies --
 local Promise = shared("Promise")
 local MapsConfig = shared("MapsConfig")
-local RoundConfig = shared("RoundConfig")
+local DataStream = shared("DataStream")
 
 -- Constants --
 local MAPS_FOLDER = ServerStorage:WaitForChild(MapsConfig.MAPS_FOLDER_NAME, 10)
@@ -32,12 +32,21 @@ local function DebugLog(...)
 	print("[MapService]", ...)
 end
 
+-- Gets a physics value from DebugPhysics DataStream (for runtime tuning)
+local function GetDebugPhysics(key)
+	local debugPhysics = DataStream.DebugPhysics
+	if debugPhysics and debugPhysics[key] then
+		return debugPhysics[key]:Read()
+	end
+	return nil
+end
+
 -- Applies slippery physics to all BaseParts in the map
 local function ApplySlipperyPhysics(mapInstance)
 	local slipperyProperties = PhysicalProperties.new(
 		0.7, -- Density
-		RoundConfig.SLIPPERY_FRICTION, -- Friction (low for ice-like sliding)
-		RoundConfig.SLIPPERY_ELASTICITY, -- Elasticity (low bounce)
+		GetDebugPhysics("SLIPPERY_FRICTION") or 0.05, -- Friction (low for ice-like sliding)
+		GetDebugPhysics("SLIPPERY_ELASTICITY") or 0.3, -- Elasticity (low bounce)
 		100, -- FrictionWeight (max value, makes this friction dominate)
 		1 -- ElasticityWeight
 	)
@@ -191,6 +200,15 @@ end
 -- Gets map config by ID
 function MapService:GetMapConfig(mapId)
 	return MapsConfig.Maps[mapId]
+end
+
+-- Updates surface physics on current map (for runtime debug tuning)
+function MapService:UpdateMapSurfacePhysics()
+	if _CurrentMapInstance then
+		ApplySlipperyPhysics(_CurrentMapInstance)
+		return true
+	end
+	return false
 end
 
 -- Initializers --

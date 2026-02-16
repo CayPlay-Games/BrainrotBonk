@@ -39,6 +39,15 @@ local function DebugLog(...)
 	end
 end
 
+-- Gets a physics value from DebugPhysics DataStream (for runtime tuning)
+local function GetDebugPhysics(key)
+	local debugPhysics = DataStream.DebugPhysics
+	if debugPhysics and debugPhysics[key] then
+		return debugPhysics[key]:Read()
+	end
+	return nil
+end
+
 -- Creates the standardized physics box model
 local function CreatePhysicsBox(player, spawnCFrame)
 	local physicsBox = Instance.new("Model")
@@ -47,7 +56,11 @@ local function CreatePhysicsBox(player, spawnCFrame)
 	-- Create the main physics body (box)
 	local rootPart = Instance.new("Part")
 	rootPart.Name = "HumanoidRootPart"
-	rootPart.Size = RoundConfig.PHYSICS_BOX_SIZE
+	rootPart.Size = Vector3.new(
+		GetDebugPhysics("PHYSICS_BOX_SIZE_X") or 3.5,
+		GetDebugPhysics("PHYSICS_BOX_SIZE_Y") or 5,
+		GetDebugPhysics("PHYSICS_BOX_SIZE_Z") or 3.5
+	)
 	rootPart.Color = RoundConfig.PHYSICS_BOX_COLOR
 	rootPart.Material = Enum.Material.SmoothPlastic
 	rootPart.TopSurface = Enum.SurfaceType.Smooth
@@ -59,9 +72,9 @@ local function CreatePhysicsBox(player, spawnCFrame)
 
 	-- Set physics properties (low friction for curling-disc physics)
 	rootPart.CustomPhysicalProperties = PhysicalProperties.new(
-		RoundConfig.PHYSICS_BOX_DENSITY, -- Density
-		RoundConfig.PHYSICS_BOX_FRICTION, -- Friction (low for ice-like sliding)
-		RoundConfig.PHYSICS_BOX_ELASTICITY, -- Elasticity for bouncy collisions
+		GetDebugPhysics("PHYSICS_BOX_DENSITY") or 25, -- Density
+		GetDebugPhysics("PHYSICS_BOX_FRICTION") or 0.05, -- Friction (low for ice-like sliding)
+		GetDebugPhysics("PHYSICS_BOX_ELASTICITY") or 0.4, -- Elasticity for bouncy collisions
 		1, -- FrictionWeight (low, let floor friction dominate)
 		100 -- ElasticityWeight (high for consistent bounces)
 	)
@@ -188,7 +201,7 @@ function SkinService:AttachSkin(physicsBox, skinId, mutation)
 	end
 
 	-- Position skin so Floor attachment aligns with bottom of physics box
-	local boxBottomY = -RoundConfig.PHYSICS_BOX_SIZE.Y / 2
+	local boxBottomY = -(GetDebugPhysics("PHYSICS_BOX_SIZE_Y") or 5) / 2
 	local floorAttachment = skinModel:FindFirstChild("Floor", true)
 
 	if floorAttachment and floorAttachment:IsA("Attachment") then
@@ -211,6 +224,52 @@ function SkinService:AttachSkin(physicsBox, skinId, mutation)
 	skinModel.Parent = physicsBox
 
 	DebugLog("Attached skin", skinId, "to physics box")
+	return true
+end
+
+-- Updates physics box properties from current debug values (for runtime tuning)
+function SkinService:UpdatePhysicsBoxProperties(player)
+	local character = player.Character
+	if not character then return false end
+
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if not rootPart or not rootPart:IsA("Part") then return false end
+
+	-- Update size
+	local newSize = Vector3.new(
+		GetDebugPhysics("PHYSICS_BOX_SIZE_X") or 3.5,
+		GetDebugPhysics("PHYSICS_BOX_SIZE_Y") or 5,
+		GetDebugPhysics("PHYSICS_BOX_SIZE_Z") or 3.5
+	)
+	rootPart.Size = newSize
+
+	-- Update physics properties
+	rootPart.CustomPhysicalProperties = PhysicalProperties.new(
+		GetDebugPhysics("PHYSICS_BOX_DENSITY") or 25,
+		GetDebugPhysics("PHYSICS_BOX_FRICTION") or 0.05,
+		GetDebugPhysics("PHYSICS_BOX_ELASTICITY") or 0.4,
+		1, -- FrictionWeight
+		100 -- ElasticityWeight
+	)
+
+	-- Reposition skin to match new box size
+	local skinModel = character:FindFirstChild("Skin")
+	if skinModel then
+		local skinPrimaryPart = skinModel.PrimaryPart or skinModel:FindFirstChildWhichIsA("BasePart")
+		if skinPrimaryPart then
+			local boxBottomY = -newSize.Y / 2
+			local floorAttachment = skinModel:FindFirstChild("Floor", true)
+
+			if floorAttachment and floorAttachment:IsA("Attachment") then
+				local floorOffset = floorAttachment.Position
+				skinModel:PivotTo(rootPart.CFrame * CFrame.new(-floorOffset.X, boxBottomY - floorOffset.Y, -floorOffset.Z) * CFrame.Angles(0, math.pi, 0))
+			else
+				skinModel:PivotTo(rootPart.CFrame * CFrame.new(0, boxBottomY, 0) * CFrame.Angles(0, math.pi, 0))
+			end
+		end
+	end
+
+	DebugLog("Updated physics box properties for", player.Name)
 	return true
 end
 
