@@ -76,4 +76,7 @@ return {
 
 	-- Group membership rewards
 	ReceivedGroupRewards = false, -- True if player received group membership rewards
+
+	-- Badges earned (array of badge IDs)
+	Badges = {},
 }

@@ -16,6 +16,7 @@ local RankConfig = shared("RankConfig")
 local RankHelper = shared("RankHelper")
 local DataStream = shared("DataStream")
 local RoundConfig = shared("RoundConfig")
+local BadgeService = shared("BadgeService")
 
 -- Private Variables --
 
@@ -118,6 +119,7 @@ function RankService:AwardXP(player, amount)
 			local rankData = RankConfig.Ranks[i]
 			DebugLog(player.Name, "reached rank:", rankData.Name)
 			GiveRankReward(player, rankData.Reward)
+			BadgeService:CheckRankBadges(player, i)
 		end
 
 		-- Update last rewarded
@@ -178,6 +180,7 @@ function RankService:Init()
 					for i = lastRewarded + 1, currentRank do
 						local rankData = RankConfig.Ranks[i]
 						GiveRankReward(player, rankData.Reward)
+						BadgeService:CheckRankBadges(player, i)
 					end
 					stored.Rank.LastRankRewarded = currentRank
 				end
