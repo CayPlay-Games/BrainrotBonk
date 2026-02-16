@@ -89,6 +89,10 @@ local SkinsByRarity = {
 			Rarity = Rarities.Common.Name,
 			ModelName = "FluriFlura",
 			Icon = "rbxassetid://112553947469095",
+			KeyframeSequences = {
+				Idle = "rbxassetid://131516360936386",
+				Walk = "rbxassetid://127026223662741",
+			},
 		},
 		LiriliLarila = {
 			DisplayName = "Lirili Larila",
@@ -199,6 +203,10 @@ local SkinsByRarity = {
 			Rarity = Rarities.Rare.Name,
 			ModelName = "AvocadiniGuffo",
 			Icon = "rbxassetid://76742828511811",
+			KeyframeSequences = {
+				Idle = "rbxassetid://102820787617428",
+				Walk = "rbxassetid://138762612908285",
+			},
 		},
 		TrulimeroTrulicina = {
 			DisplayName = "Trulimero Trulicina",

@@ -11,6 +11,7 @@
 local SkinService = {}
 
 -- Roblox Services --
+local CollectionService = game:GetService("CollectionService")
 local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -209,6 +210,12 @@ function SkinService:AttachSkin(physicsBox, skinId, mutation)
 	-- Parent skin to physics box
 	skinModel.Name = "Skin"
 	skinModel.Parent = physicsBox
+
+	-- Store skinId as attribute for client-side animation lookup
+	skinModel:SetAttribute("SkinId", skinId)
+
+	-- Tag for client-side animation controller to detect
+	CollectionService:AddTag(skinModel, "Skin")
 
 	DebugLog("Attached skin", skinId, "to physics box")
 	return true
