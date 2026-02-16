@@ -23,6 +23,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ClientDataStream = shared("ClientDataStream")
 local GetRemoteEvent = shared("GetRemoteEvent")
 local RoundConfig = shared("RoundConfig")
+local PromiseWaitForDataStream = shared("PromiseWaitForDataStream")
 
 -- Object References --
 local LocalPlayer = Players.LocalPlayer
@@ -47,6 +48,7 @@ local _InputConnection = nil
 local _RenderConnection = nil
 local _AimTimerThread = nil
 local _HasSubmittedAim = false
+local _IsAimLocked = false
 
 -- Internal Functions --
 
@@ -176,6 +178,11 @@ end
 
 -- Updates aim direction based on camera look direction
 local function UpdateAimFromCamera()
+	-- Skip update if aim is locked
+	if _IsAimLocked then
+		return
+	end
+
 	local character = LocalPlayer.Character
 	if not character then
 		return
@@ -233,6 +240,9 @@ local function StartAiming()
 
 	-- Reset to default power
 	_CurrentPower = RoundConfig.DEFAULT_AIM_POWER
+
+	-- Reset aim lock (always start unlocked)
+	_IsAimLocked = false
 
 	-- Get initial direction from camera
 	UpdateAimFromCamera()
@@ -385,54 +395,58 @@ function AimController:AdjustPower(delta)
 	AdjustPower(delta)
 end
 
+function AimController:IsAimLocked()
+	return _IsAimLocked
+end
+
+function AimController:ToggleAimLock()
+	if not _IsAiming then
+		return false
+	end
+	_IsAimLocked = not _IsAimLocked
+	DebugLog("Aim lock toggled:", _IsAimLocked)
+	return _IsAimLocked
+end
+
 -- Initializers --
 function AimController:Init()
 	DebugLog("Initializing...")
 
-	-- Wait for ClientDataStream to be ready
-	task.defer(function()
-		-- Wait a moment for DataStream to initialize
-		task.wait(1)
+	-- Wait for ClientDataStream.RoundState to be ready
+	PromiseWaitForDataStream(ClientDataStream.RoundState):andThen(function(roundState)
+		local lastKnownState = roundState.State:Read()
 
-		-- Listen for round state changes
-		local roundState = ClientDataStream.RoundState
-		if roundState then
-			local lastKnownState = roundState.State:Read()
-
-			roundState.State:Changed(function(newState)
-				-- Only react if the state actually changed
-				if newState == lastKnownState then
-					return
-				end
-
-				local previousState = lastKnownState
-				lastKnownState = newState
-
-				DebugLog("Round state changed:", previousState, "->", newState)
-
-				-- Handle Aiming phase (only if player is in the round)
-				if newState == "Aiming" and IsLocalPlayerInRound() then
-					StartAiming()
-				elseif previousState == "Aiming" and newState ~= "Aiming" then
-					StopAiming()
-				end
-
-				-- Handle Revealing phase
-				if newState == "Revealing" then
-					StartReveal()
-				elseif previousState == "Revealing" and newState ~= "Revealing" then
-					StopReveal()
-				end
-			end)
-
-			-- Check if we're already in aiming state (only if player is in the round)
-			if lastKnownState == "Aiming" and IsLocalPlayerInRound() then
-				StartAiming()
-			elseif lastKnownState == "Revealing" then
-				StartReveal()
+		roundState.State:Changed(function(newState)
+			-- Only react if the state actually changed
+			if newState == lastKnownState then
+				return
 			end
-		else
-			warn("[AimController] RoundState not found in ClientDataStream")
+
+			local previousState = lastKnownState
+			lastKnownState = newState
+
+			DebugLog("Round state changed:", previousState, "->", newState)
+
+			-- Handle Aiming phase (only if player is in the round)
+			if newState == "Aiming" and IsLocalPlayerInRound() then
+				StartAiming()
+			elseif previousState == "Aiming" and newState ~= "Aiming" then
+				StopAiming()
+			end
+
+			-- Handle Revealing phase
+			if newState == "Revealing" then
+				StartReveal()
+			elseif previousState == "Revealing" and newState ~= "Revealing" then
+				StopReveal()
+			end
+		end)
+
+		-- Check if we're already in aiming state (only if player is in the round)
+		if lastKnownState == "Aiming" and IsLocalPlayerInRound() then
+			StartAiming()
+		elseif lastKnownState == "Revealing" then
+			StartReveal()
 		end
 	end)
 end
