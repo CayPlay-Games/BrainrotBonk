@@ -24,6 +24,15 @@ return TableHelper:DeepFreeze({
 
 	TEAM_MEMBER_IDS = {
 		-- Add team member user IDs here
+		3227249514,
+		381863,
+		7160674252,
+		2760321619,
+		8982212592,
+		254301387,
+		384639097,
+		2657540898
+
 	},
 
 	-- Map rank index to badge ID key
