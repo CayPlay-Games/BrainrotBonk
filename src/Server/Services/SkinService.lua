@@ -44,7 +44,7 @@ local function CreatePhysicsBox(player, spawnCFrame)
 	local physicsBox = Instance.new("Model")
 	physicsBox.Name = player.Name
 
-	-- Create the main physics body (cube)
+	-- Create the main physics body (box)
 	local rootPart = Instance.new("Part")
 	rootPart.Name = "HumanoidRootPart"
 	rootPart.Size = RoundConfig.PHYSICS_BOX_SIZE
@@ -57,13 +57,13 @@ local function CreatePhysicsBox(player, spawnCFrame)
 	rootPart.Transparency = 0.8
 	rootPart.CFrame = spawnCFrame
 
-	-- Set physics properties (high friction so it doesn't slide on its own - LinearVelocity controls movement)
+	-- Set physics properties (low friction for curling-disc physics)
 	rootPart.CustomPhysicalProperties = PhysicalProperties.new(
 		RoundConfig.PHYSICS_BOX_DENSITY, -- Density
-		RoundConfig.SLIPPERY_FRICTION, -- Friction aligned with map ice surface
-		RoundConfig.SLIPPERY_ELASTICITY, -- Elasticity for collisions
-		100, -- FrictionWeight
-		1 -- ElasticityWeight
+		RoundConfig.PHYSICS_BOX_FRICTION, -- Friction (low for ice-like sliding)
+		RoundConfig.PHYSICS_BOX_ELASTICITY, -- Elasticity for bouncy collisions
+		1, -- FrictionWeight (low, let floor friction dominate)
+		100 -- ElasticityWeight (high for consistent bounces)
 	)
 
 	rootPart.Parent = physicsBox

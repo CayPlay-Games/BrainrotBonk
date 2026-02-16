@@ -32,7 +32,7 @@ local MapService = shared("MapService")
 local MapsConfig = shared("MapsConfig")
 local SkinService = shared("SkinService")
 local PickMapService = shared("PickMapService")
-local PhysicsUtil = shared("PhysicsUtil")
+local PhysicsService = shared("PhysicsService")
 
 -- Object References --
 local SubmitAimRemoteEvent = GetRemoteEvent("SubmitAim")
@@ -257,9 +257,7 @@ local function SetupKillPartDetection()
 	_KillPartConnection = killPart.Touched:Connect(function(otherPart)
 		-- Find which player/dummy this part belongs to
 		local model = otherPart:FindFirstAncestorOfClass("Model")
-		if not model then
-			return
-		end
+		if not model then return end
 
 		-- Check all alive players/dummies
 		for entity in pairs(_AlivePlayers) do
@@ -311,7 +309,7 @@ local function CreateDummyPlayer(spawnCFrame)
 	-- Set physics properties
 	rootPart.CustomPhysicalProperties = PhysicalProperties.new(
 		RoundConfig.PHYSICS_BOX_DENSITY,
-		RoundConfig.SLIPPERY_FRICTION, -- Friction
+		1, -- Friction
 		RoundConfig.SLIPPERY_ELASTICITY,
 		100,
 		1
@@ -349,9 +347,7 @@ end
 -- Teleports a player to the lobby spawn
 local function TeleportToLobby(player)
 	local character = player.Character
-	if not character then
-		return
-	end
+	if not character then return end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if hrp then
@@ -359,48 +355,6 @@ local function TeleportToLobby(player)
 		hrp.AssemblyLinearVelocity = Vector3.zero
 		hrp.AssemblyAngularVelocity = Vector3.zero
 		hrp.CFrame = CFrame.new(RoundConfig.LOBBY_SPAWN_POSITION)
-	end
-end
-
--- Updates the AFK label on a player's character
-local function UpdateAFKLabel(player, isAFK)
-	local character = player.Character
-	if not character then
-		return
-	end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then
-		return
-	end
-
-	-- Check for existing AFK label
-	local existingLabel = character:FindFirstChild("AFKLabel")
-
-	if existingLabel then
-		-- Just toggle visibility if label already exists
-		existingLabel.Enabled = isAFK
-	elseif isAFK then
-		-- Create new label only if AFK and doesn't exist yet
-		local billboard = Instance.new("BillboardGui")
-		billboard.Name = "AFKLabel"
-		billboard.Size = UDim2.new(2, 0, 1, 0)
-		billboard.StudsOffset = Vector3.new(0, -0.5, 0)
-		billboard.AlwaysOnTop = true
-		billboard.Adornee = hrp
-		billboard.Parent = character
-		billboard.MaxDistance = 100
-
-		local textLabel = Instance.new("TextLabel")
-		textLabel.Size = UDim2.new(1, 0, 1, 0)
-		textLabel.BackgroundTransparency = 1
-		textLabel.Text = "AFK"
-		textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-		textLabel.TextStrokeTransparency = 0
-		textLabel.TextScaled = true
-		textLabel.Font = Enum.Font.FredokaOne
-		textLabel.Parent = billboard
 	end
 end
 
@@ -420,14 +374,9 @@ local function CanStartRound()
 	return activeCount >= RoundConfig.MIN_PLAYERS_TO_START
 end
 
--- Checks if AFK toggle is allowed for a player
-local function CanToggleAFK(player)
-	-- Always allow during Waiting or RoundEnd
-	if _CurrentState == States.Waiting or _CurrentState == States.RoundEnd then
-		return true
-	end
-	-- Also allow if player is not alive (in lobby or eliminated)
-	return _AlivePlayers[player] ~= true
+-- Checks if AFK toggle is allowed (only during Waiting or RoundEnd)
+local function CanToggleAFK()
+	return _CurrentState == States.Waiting or _CurrentState == States.RoundEnd
 end
 
 -- Forward declaration for state transitions
@@ -474,12 +423,8 @@ local function EnterWaiting()
 
 		task.delay(mapSelectionDelay, function()
 			-- Only proceed if still in Waiting state
-			if _CurrentState ~= States.Waiting then
-				return
-			end
-			if not CanStartRound() then
-				return
-			end
+			if _CurrentState ~= States.Waiting then return end
+			if not CanStartRound() then return end
 
 			-- Select map and show notification (triggers client roulette animation)
 			-- Priority: 1) Robux queue, 2) DEFAULT_MAP, 3) Random
@@ -496,23 +441,17 @@ local function EnterWaiting()
 			-- Delay map loading to let roulette animation play (3 seconds)
 			task.delay(3, function()
 				-- Only proceed if still in Waiting state
-				if _CurrentState ~= States.Waiting then
-					return
-				end
-				if not CanStartRound() then
-					return
-				end
+				if _CurrentState ~= States.Waiting then return end
+				if not CanStartRound() then return end
 
-				MapService:LoadMap(mapId)
-					:andThen(function(spawnPoints)
-						_CurrentSpawnPoints = spawnPoints
-						_MapLoadedDuringCountdown = true
-						DebugLog("Map loaded during countdown:", mapId)
-					end)
-					:catch(function(err)
-						warn("[RoundService] Failed to load map during countdown:", err)
-						_MapLoadedDuringCountdown = false
-					end)
+				MapService:LoadMap(mapId):andThen(function(spawnPoints)
+					_CurrentSpawnPoints = spawnPoints
+					_MapLoadedDuringCountdown = true
+					DebugLog("Map loaded during countdown:", mapId)
+				end):catch(function(err)
+					warn("[RoundService] Failed to load map during countdown:", err)
+					_MapLoadedDuringCountdown = false
+				end)
 			end)
 		end)
 
@@ -601,36 +540,34 @@ local function EnterMapLoading()
 	local mapId = MapsConfig.DEFAULT_MAP
 
 	-- Load the map via MapService
-	MapService:LoadMap(mapId)
-		:andThen(function(spawnPoints)
-			if _CurrentState ~= States.MapLoading then
-				return -- State changed while loading, abort
-			end
+	MapService:LoadMap(mapId):andThen(function(spawnPoints)
+		if _CurrentState ~= States.MapLoading then
+			return -- State changed while loading, abort
+		end
 
-			_CurrentSpawnPoints = spawnPoints
+		_CurrentSpawnPoints = spawnPoints
 
-			-- Update DataStream with map info
-			local mapConfig = MapsConfig.Maps[mapId]
-			DataStream.RoundState.CurrentMapId = mapId
-			DataStream.RoundState.CurrentMapName = mapConfig and mapConfig.DisplayName or mapId
+		-- Update DataStream with map info
+		local mapConfig = MapsConfig.Maps[mapId]
+		DataStream.RoundState.CurrentMapId = mapId
+		DataStream.RoundState.CurrentMapName = mapConfig and mapConfig.DisplayName or mapId
 
-			DebugLog("Map loaded:", mapId, "with", #spawnPoints, "spawn points")
-			TransitionTo(States.Spawning)
-		end)
-		:catch(function(err)
-			warn("[RoundService] Failed to load map:", err)
-			-- Fallback: generate circular spawn points facing center
-			_CurrentSpawnPoints = {}
-			for i = 1, 12 do
-				local angle = (i - 1) * (2 * math.pi / 12)
-				local radius = 20
-				local pos = Vector3.new(math.cos(angle) * radius, 5, math.sin(angle) * radius)
-				_CurrentSpawnPoints[i] = CFrame.lookAt(pos, Vector3.new(0, pos.Y, 0))
-			end
-			DataStream.RoundState.CurrentMapId = "Fallback"
-			DataStream.RoundState.CurrentMapName = "Fallback Arena"
-			TransitionTo(States.Spawning)
-		end)
+		DebugLog("Map loaded:", mapId, "with", #spawnPoints, "spawn points")
+		TransitionTo(States.Spawning)
+	end):catch(function(err)
+		warn("[RoundService] Failed to load map:", err)
+		-- Fallback: generate circular spawn points facing center
+		_CurrentSpawnPoints = {}
+		for i = 1, 12 do
+			local angle = (i - 1) * (2 * math.pi / 12)
+			local radius = 20
+			local pos = Vector3.new(math.cos(angle) * radius, 5, math.sin(angle) * radius)
+			_CurrentSpawnPoints[i] = CFrame.lookAt(pos, Vector3.new(0, pos.Y, 0))
+		end
+		DataStream.RoundState.CurrentMapId = "Fallback"
+		DataStream.RoundState.CurrentMapName = "Fallback Arena"
+		TransitionTo(States.Spawning)
+	end)
 end
 
 local function EnterSpawning()
@@ -859,22 +796,21 @@ local function EnterLaunching()
 					-- Must unanchor before setting network ownership
 					hrp.Anchored = false
 					-- Set network ownership to server so velocity changes take effect
-					local success, err = pcall(function()
-						hrp:SetNetworkOwner(nil)
-					end)
-					if not success then
-						local skinModel = character:FindFirstChild("Skin")
-						local skinName = skinModel and skinModel.PrimaryPart and skinModel.PrimaryPart.Name or "Unknown"
-						warn("[RoundService] Failed to set network owner for - Skin:", skinName, "-", err)
-					end
+					hrp:SetNetworkOwner(nil)
 
 					local velocityMagnitude = aim.Power * RoundConfig.LAUNCH_FORCE_MULTIPLIER
 					local direction = aim.Direction.Unit
-					-- Reset momentum before launch and use impulse-based motion for smoother clashes.
-					hrp.AssemblyLinearVelocity = Vector3.zero
-					hrp.AssemblyAngularVelocity = Vector3.zero
-					PhysicsUtil:ApplyLaunchImpulse(hrp, direction, velocityMagnitude)
-					DebugLog(player.Name, "launched with speed", velocityMagnitude)
+					-- Apply velocity directly (XZ only, Y starts at 0)
+					hrp.AssemblyLinearVelocity = Vector3.new(
+						direction.X * velocityMagnitude,
+						0,
+						direction.Z * velocityMagnitude
+					)
+
+					-- Register with PhysicsService for custom collision handling
+					PhysicsService:RegisterPhysicsBox(hrp)
+
+					DebugLog(player.Name, "launched with velocity", velocityMagnitude)
 				end
 			end
 		end
@@ -890,37 +826,62 @@ local function EnterResolution()
 	DebugLog("Entering Resolution state")
 
 	local resolutionStartTime = tick()
-	local horizontalDrag = RoundConfig.CURLING_HORIZONTAL_DRAG or 2.6
-	local settleSpeed = RoundConfig.CURLING_SETTLE_SPEED or RoundConfig.CURLING_MIN_SPEED or 0.5
+	local baseDecayRate = RoundConfig.CURLING_DECAY_RATE or 0.995
+	local minSpeed = RoundConfig.CURLING_MIN_SPEED or 0.3
+
+	-- Track last frame time for frame-rate independent decay
+	local lastFrameTime = tick()
 
 	-- Monitor until players settle or timeout
 	local checkConnection
-	checkConnection = RunService.Heartbeat:Connect(function(dt)
+	checkConnection = RunService.Heartbeat:Connect(function()
 		if _CurrentState ~= States.Resolution then
 			checkConnection:Disconnect()
 			return
 		end
 
-		local elapsed = tick() - resolutionStartTime
+		-- Calculate delta time for frame-rate independent decay
+		local currentTime = tick()
+		local deltaTime = currentTime - lastFrameTime
+		lastFrameTime = currentTime
+
+		local elapsed = currentTime - resolutionStartTime
 
 		-- Check win condition
 		local aliveCount = GetAliveCount()
 		if aliveCount <= 1 then
 			checkConnection:Disconnect()
+			PhysicsService:ClearAll()
 			TransitionTo(States.RoundEnd)
 			return
 		end
 
-		-- Apply dt-based drag so movement feel is stable across frame rates.
+		-- Frame-rate independent decay: decayRate^(deltaTime * 60) normalizes to 60fps
+		local frameDecay = baseDecayRate ^ (deltaTime * 60)
+
+		-- Apply curling stone physics - decay velocity each frame
 		local allSettled = true
 		for player in pairs(_AlivePlayers) do
 			local character = player.Character
 			if character then
 				local hrp = character:FindFirstChild("HumanoidRootPart")
 				if hrp then
-					local settled = PhysicsUtil:ApplyHorizontalDrag(hrp, dt, horizontalDrag, settleSpeed)
-					if not settled then
+					local currentVel = hrp.AssemblyLinearVelocity
+					local horizontalVel = Vector3.new(currentVel.X, 0, currentVel.Z)
+					local speed = horizontalVel.Magnitude
+
+					if speed > minSpeed then
+						-- Decay horizontal velocity (simulates ice friction)
+						local newHorizontalVel = horizontalVel * frameDecay
+						hrp.AssemblyLinearVelocity = Vector3.new(
+							newHorizontalVel.X,
+							currentVel.Y, -- Preserve vertical velocity for gravity
+							newHorizontalVel.Z
+						)
 						allSettled = false
+					elseif speed > 0.01 then
+						-- Stop horizontal movement when below minimum speed
+						hrp.AssemblyLinearVelocity = Vector3.new(0, currentVel.Y, 0)
 					end
 				end
 			end
@@ -929,6 +890,7 @@ local function EnterResolution()
 		-- If settled or timeout, go back to aiming or end round
 		if allSettled or elapsed > RoundConfig.Timers.RESOLUTION_TIMEOUT then
 			checkConnection:Disconnect()
+			PhysicsService:ClearAll()
 
 			if aliveCount <= 1 then
 				TransitionTo(States.RoundEnd)
@@ -943,6 +905,9 @@ end
 
 local function EnterRoundEnd()
 	DebugLog("Entering RoundEnd state")
+
+	-- Clear all physics registrations
+	PhysicsService:ClearAll()
 
 	-- Reset round number
 	_RoundNumber = 0
@@ -1091,6 +1056,15 @@ function RoundService:EliminatePlayer(player, eliminatedBy)
 	eliminatedBy = ResolveEliminatedBy(player, eliminatedBy)
 	DebugLog(player.DisplayName, "eliminated by:", eliminatedBy)
 
+	-- Unregister from PhysicsService before cleanup
+	local character = player.Character
+	if character then
+		local hrp = character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			PhysicsService:UnregisterPhysicsBox(hrp)
+		end
+	end
+
 	-- Remove from alive players
 	_AlivePlayers[player] = nil
 	_LastHitBy[player] = nil
@@ -1138,8 +1112,8 @@ end
 
 -- Toggles AFK status for a player
 function RoundService:ToggleAFK(player)
-	if not CanToggleAFK(player) then
-		DebugLog(player.DisplayName, "tried to toggle AFK while in round during", _CurrentState)
+	if not CanToggleAFK() then
+		DebugLog(player.DisplayName, "tried to toggle AFK during", _CurrentState)
 		return false
 	end
 
@@ -1152,9 +1126,6 @@ function RoundService:ToggleAFK(player)
 	local currentAFK = sessionData.IsAFK:Read()
 	local newAFK = not currentAFK
 	sessionData.IsAFK = newAFK
-
-	-- Update the visual AFK label on the player's character
-	UpdateAFKLabel(player, newAFK)
 
 	DebugLog(player.DisplayName, "AFK status:", newAFK)
 	return true
@@ -1222,16 +1193,6 @@ function RoundService:Init()
 				end)
 			end
 
-			-- Reapply AFK label if player is AFK
-			local sessionData = DataStream.Session[player]
-			if sessionData then
-				local isAFK = sessionData.IsAFK:Read()
-				if isAFK then
-					task.defer(function()
-						UpdateAFKLabel(player, true)
-					end)
-				end
-			end
 		end)
 	end)
 
@@ -1256,17 +1217,6 @@ function RoundService:Init()
 						self:EliminatePlayer(player, "Death")
 					end
 				end)
-			end
-
-			-- Reapply AFK label if player is AFK
-			local sessionData = DataStream.Session[player]
-			if sessionData then
-				local isAFK = sessionData.IsAFK:Read()
-				if isAFK then
-					task.defer(function()
-						UpdateAFKLabel(player, true)
-					end)
-				end
 			end
 		end)
 	end
