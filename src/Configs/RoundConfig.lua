@@ -56,4 +56,8 @@ return TableHelper:DeepFreeze({
 
 	-- Lobby settings
 	LOBBY_SPAWN_POSITION = Vector3.new(125.528, 165, -34.834), -- Where players spawn in lobby
+
+	-- Server switch popup settings
+	SWITCH_SERVER_TIMEOUT = 90, -- Seconds in Waiting before showing popup
+	SWITCH_SERVER_COOLDOWN = 120, -- Seconds before showing popup again after clicking Stay
 })
