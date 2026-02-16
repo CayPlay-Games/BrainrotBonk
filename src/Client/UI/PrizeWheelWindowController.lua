@@ -291,9 +291,6 @@ local function UpdateProgressiveProgress()
 		local bar = progressFrame and progressFrame:FindFirstChild("Bar")
 		if bar and bar:IsA("Frame") then
 			bar.Size = UDim2.new(progressValue, 0, 1, 0)
-			if config and config.Color then
-				bar.BackgroundColor3 = config.Color
-			end
 		end
 	end
 end
