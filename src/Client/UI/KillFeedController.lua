@@ -2,7 +2,9 @@
 	KillFeedController.lua
 
 	Description:
-		Listens for player eliminations and renders kill-feed messages in HUD.
+		Displays live elimination feed entries in HUD.RightFrame.
+		- Knockout: Player1 knocked out Player2
+		- Slip/Suicide: Player1 slipped off
 --]]
 
 -- Root --
@@ -13,221 +15,269 @@ local Players = game:GetService("Players")
 
 -- Dependencies --
 local ClientDataStream = shared("ClientDataStream")
+local RoundConfig = shared("RoundConfig")
 
+-- Object References --
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Constants --
-local ENTRY_LIFETIME = 4
+local ENTRY_LIFETIME = 7
 local MAX_ENTRIES = 6
-local SKULL_ICON = "rbxassetid://124432953529217"
+local FALLBACK_SKULL_IMAGE = "rbxassetid://124432953529217"
 
 -- Private Variables --
-local _MainFrame = nil
+local _HUD = nil
+local _RightFrame = nil
 local _Template = nil
-local _NextLayoutOrder = 1
-local _LastAliveByUserId = {} -- userId -> bool
+local _DefaultPlayer2Image = nil
+local _Entries = {}
+local _LastPlayersSnapshot = {}
+local _ProcessedEliminations = {}
+local _EntrySerial = 0
 
--- Private Functions --
-local function GetDisplayName(playersData, userId)
-	local data = playersData[userId] or playersData[tostring(userId)] or playersData[tonumber(userId)]
-	return (data and data.DisplayName and data.DisplayName ~= "" and data.DisplayName)
-		or ("Player " .. tostring(userId))
+-- Internal Functions --
+local function DebugLog(...)
+	if RoundConfig.DEBUG_LOG_STATE_CHANGES then
+		print("[KillFeedController]", ...)
+	end
 end
 
-local function BuildFeedEntryData(victimUserId, victimData, playersData)
-	local victimName = GetDisplayName(playersData, victimUserId)
-	local eliminatedBy = victimData.EliminatedBy
-
-	if eliminatedBy == "Disconnect" then
-		return nil
-	end
-
-	local attackerUserId = tostring(eliminatedBy)
-	local isSlip = eliminatedBy == nil
-		or eliminatedBy == "Fall"
-		or eliminatedBy == "Death"
-		or eliminatedBy == "Slip"
-		or attackerUserId == tostring(victimUserId)
-
-	if isSlip then
-		return {
-			Message = "slipped off",
-			Player1 = {
-				Name = victimName,
-				UserId = victimUserId,
-			},
-			Player2 = {
-				Name = "",
-				Image = SKULL_ICON,
-			},
+local function CopyPlayersSnapshot(playersTable)
+	local copied = {}
+	for userId, data in pairs(playersTable or {}) do
+		copied[tostring(userId)] = {
+			IsAlive = data.IsAlive,
+			EliminatedBy = data.EliminatedBy,
+			DisplayName = data.DisplayName,
 		}
 	end
+	return copied
+end
 
-	return {
-		Message = "knocked off",
-		Player1 = {
-			Name = GetDisplayName(playersData, attackerUserId),
-			UserId = attackerUserId,
-		},
-		Player2 = {
-			Name = victimName,
-			UserId = victimUserId,
-		},
-	}
+local function GetDisplayName(userId, playersSnapshot)
+	local key = tostring(userId)
+	local fromRoundState = playersSnapshot and playersSnapshot[key]
+	if fromRoundState and fromRoundState.DisplayName and fromRoundState.DisplayName ~= "" then
+		return fromRoundState.DisplayName
+	end
+
+	local numericUserId = tonumber(key)
+	if numericUserId then
+		local player = Players:GetPlayerByUserId(numericUserId)
+		if player then
+			return player.DisplayName
+		end
+	end
+
+	return "Player " .. key
+end
+
+local function GetHeadshot(userId)
+	local numericUserId = tonumber(userId)
+	if not numericUserId then
+		return ""
+	end
+
+	local success, image = pcall(function()
+		return Players:GetUserThumbnailAsync(numericUserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+	end)
+
+	if success and image then
+		return image
+	end
+
+	return ""
+end
+
+local function SetPlayerSlot(slotFrame, userId, displayName, overrideImage)
+	if not slotFrame then
+		return
+	end
+
+	if slotFrame:IsA("ImageLabel") or slotFrame:IsA("ImageButton") then
+		if overrideImage ~= nil then
+			slotFrame.Image = overrideImage
+		elseif userId ~= nil then
+			slotFrame.Image = GetHeadshot(userId)
+		end
+	end
+
+	local nameLabel = slotFrame:FindFirstChild("PlayerName")
+	if nameLabel and nameLabel:IsA("TextLabel") then
+		nameLabel.Text = displayName or ""
+	end
+end
+
+local function DestroyEntry(entry)
+	for index, existing in ipairs(_Entries) do
+		if existing == entry then
+			table.remove(_Entries, index)
+			break
+		end
+	end
+
+	if entry and entry.Parent then
+		entry:Destroy()
+	end
 end
 
 local function TrimOldEntries()
-	if not _MainFrame then
-		return
-	end
-
-	local entries = {}
-	for _, child in ipairs(_MainFrame:GetChildren()) do
-		if child:IsA("GuiObject") and child ~= _Template then
-			table.insert(entries, child)
-		end
-	end
-
-	if #entries <= MAX_ENTRIES then
-		return
-	end
-
-	table.sort(entries, function(a, b)
-		return a.LayoutOrder < b.LayoutOrder
-	end)
-
-	local toRemove = #entries - MAX_ENTRIES
-	for index = 1, toRemove do
-		entries[index]:Destroy()
-	end
-end
-
-local function FillPlayerSection(container, playerData)
-	if not container or not playerData then
-		return
-	end
-
-	local playerName = container:FindFirstChild("PlayerName", true)
-	if not playerName then
-		playerName = container:FindFirstChildWhichIsA("TextLabel", true)
-	end
-	if playerName and playerName:IsA("TextLabel") then
-		playerName.Text = playerData.Name or ""
-	end
-
-	local imageLabel = container:FindFirstChildWhichIsA("ImageLabel", true)
-	if imageLabel then
-		imageLabel.Image = ""
-		if playerData.Image then
-			imageLabel.Image = playerData.Image
-		else
-			local numericUserId = tonumber(playerData.UserId)
-			if numericUserId then
-				imageLabel.Image = string.format("rbxthumb://type=AvatarHeadShot&id=%d&w=100&h=100", numericUserId)
-			end
+	while #_Entries > MAX_ENTRIES do
+		local oldest = table.remove(_Entries, 1)
+		if oldest and oldest.Parent then
+			oldest:Destroy()
 		end
 	end
 end
 
-local function AddFeedEntry(entryData)
-	if not _Template or not _MainFrame then
+local function ResetFeedState()
+	for _, entry in ipairs(_Entries) do
+		if entry and entry.Parent then
+			entry:Destroy()
+		end
+	end
+	table.clear(_Entries)
+	table.clear(_ProcessedEliminations)
+end
+
+local function PushFeedEntry(actorUserId, targetUserId, isSlip, playersSnapshot)
+	if not _Template or not _RightFrame then
 		return
 	end
+
+	_EntrySerial += 1
 
 	local entry = _Template:Clone()
-	entry.Name = "Entry_" .. tostring(_NextLayoutOrder)
+	entry.Name = "Entry_" .. tostring(_EntrySerial)
 	entry.Visible = true
-	entry.LayoutOrder = _NextLayoutOrder
-	_NextLayoutOrder += 1
+	entry.LayoutOrder = -_EntrySerial
 
-	local textLabel = entry:FindFirstChild("TextLabel")
-	if textLabel and textLabel:IsA("TextLabel") then
-		textLabel.Text = entryData.Message or ""
+	local player1Frame = entry:FindFirstChild("Player1")
+	local player2Frame = entry:FindFirstChild("Player2")
+	local actionLabel = entry:FindFirstChild("TextLabel")
+
+	local actorName = GetDisplayName(actorUserId, playersSnapshot)
+	SetPlayerSlot(player1Frame, actorUserId, actorName)
+
+	if isSlip then
+		local skullImage = _DefaultPlayer2Image or FALLBACK_SKULL_IMAGE
+		SetPlayerSlot(player2Frame, nil, "", skullImage)
+		if actionLabel and actionLabel:IsA("TextLabel") then
+			actionLabel.Text = "slipped off"
+		end
+	else
+		local targetName = GetDisplayName(targetUserId, playersSnapshot)
+		SetPlayerSlot(player2Frame, targetUserId, targetName)
+		if actionLabel and actionLabel:IsA("TextLabel") then
+			actionLabel.Text = "knocked out"
+		end
 	end
 
-	FillPlayerSection(entry:FindFirstChild("Player1"), entryData.Player1)
-	FillPlayerSection(entry:FindFirstChild("Player2"), entryData.Player2)
-
-	entry.Parent = _MainFrame
+	entry.Parent = _RightFrame
+	table.insert(_Entries, entry)
 	TrimOldEntries()
 
 	task.delay(ENTRY_LIFETIME, function()
-		if entry.Parent then
-			entry:Destroy()
+		if entry and entry.Parent then
+			DestroyEntry(entry)
 		end
 	end)
 end
 
-local function ClearFeed()
-	if not _MainFrame then
-		return
+local function HandlePlayersChanged(newPlayersSnapshot)
+	for userId, newData in pairs(newPlayersSnapshot) do
+		local oldData = _LastPlayersSnapshot[userId]
+		local wasAlive = oldData and oldData.IsAlive == true
+		local isAlive = newData and newData.IsAlive == true
+
+		if wasAlive and not isAlive then
+			local eliminatedBy = tostring(newData.EliminatedBy or "Slip")
+			local eventKey = tostring(userId) .. "|" .. eliminatedBy
+
+			if not _ProcessedEliminations[eventKey] then
+				_ProcessedEliminations[eventKey] = true
+
+				local attackerUserId = tonumber(eliminatedBy)
+				if attackerUserId and tostring(attackerUserId) ~= tostring(userId) then
+					PushFeedEntry(attackerUserId, tonumber(userId) or userId, false, newPlayersSnapshot)
+				else
+					PushFeedEntry(tonumber(userId) or userId, nil, true, newPlayersSnapshot)
+				end
+			end
+		end
 	end
 
-	for _, child in ipairs(_MainFrame:GetChildren()) do
+	_LastPlayersSnapshot = CopyPlayersSnapshot(newPlayersSnapshot)
+end
+
+local function SetupUI()
+	if _Template and _RightFrame and _HUD then
+		return true
+	end
+
+	_HUD = PlayerGui:WaitForChild("HUD", 30)
+	if not _HUD then
+		warn("[KillFeedController] HUD not found in PlayerGui")
+		return false
+	end
+
+	_RightFrame = _HUD:WaitForChild("RightFrame", 30)
+	if not _RightFrame then
+		warn("[KillFeedController] RightFrame not found in HUD")
+		return false
+	end
+
+	_Template = _RightFrame:FindFirstChild("_Template")
+	if not _Template then
+		warn("[KillFeedController] _Template not found in RightFrame")
+		return false
+	end
+
+	local player2Frame = _Template:FindFirstChild("Player2")
+	if player2Frame and (player2Frame:IsA("ImageLabel") or player2Frame:IsA("ImageButton")) then
+		_DefaultPlayer2Image = player2Frame.Image
+	end
+
+	_Template.Visible = false
+
+	for _, child in ipairs(_RightFrame:GetChildren()) do
 		if child:IsA("GuiObject") and child ~= _Template then
 			child:Destroy()
 		end
 	end
-end
 
-local function ProcessPlayerChanges(playersData)
-	for userId, newData in pairs(playersData) do
-		if _LastAliveByUserId[userId] == true and newData.IsAlive == false then
-			local entryData = BuildFeedEntryData(userId, newData, playersData)
-			if entryData then
-				AddFeedEntry(entryData)
-			end
-		end
-	end
-
-	_LastAliveByUserId = {}
-	for userId, data in pairs(playersData) do
-		_LastAliveByUserId[userId] = data.IsAlive == true
-	end
+	return true
 end
 
 -- Initializers --
 function KillFeedController:Init()
+	DebugLog("Initializing...")
+
 	task.defer(function()
-		task.wait(1)
-
-		local hudGui = PlayerGui:WaitForChild("HUD", 15)
-		if not hudGui then
-			warn("[KillFeedController] HUD not found in PlayerGui")
+		if not SetupUI() then
 			return
 		end
-
-		_MainFrame = hudGui:FindFirstChild("RightFrame")
-		_Template = _MainFrame and _MainFrame:FindFirstChild("_Template") or nil
-		if not _MainFrame or not _Template then
-			warn("[KillFeedController] KillFeed UI not found in HUD.RightFrame")
-			return
-		end
-
-		_Template.Visible = false
 
 		local roundState = ClientDataStream.RoundState
-		if not roundState then
-			warn("[KillFeedController] RoundState not found")
+		if not roundState or not roundState.Players then
+			warn("[KillFeedController] RoundState.Players not available")
 			return
 		end
 
-		local playersData = roundState.Players:Read() or {}
-		for userId, data in pairs(playersData) do
-			_LastAliveByUserId[userId] = data.IsAlive == true
-		end
+		_LastPlayersSnapshot = CopyPlayersSnapshot(roundState.Players:Read() or {})
 
 		roundState.Players:Changed(function()
-			ProcessPlayerChanges(roundState.Players:Read() or {})
+			HandlePlayersChanged(roundState.Players:Read() or {})
 		end)
 
-		roundState.State:Changed(function(newState)
-			if newState == "Waiting" or newState == "Spawning" then
-				ClearFeed()
-				_NextLayoutOrder = 1
-			end
-		end)
+		if roundState.State then
+			roundState.State:Changed(function(newState)
+				if newState == "Waiting" or newState == "Spawning" then
+					ResetFeedState()
+				end
+			end)
+		end
 	end)
 end
 
