@@ -16,6 +16,7 @@ local AnalyticsService = game:GetService("AnalyticsService")
 local DataStream = shared("DataStream")
 local Collections = shared("Collections")
 local Promise = shared("Promise")
+local GroupRewardsService = shared("GroupRewardsService")
 
 -- Object References --
 
@@ -153,6 +154,10 @@ function CollectionsService:GiveCurrency(Player, CurrencyId, Amount, Transaction
 		if IsCurrencyIdValid == nil then
 			return Reject(`{CurrencyId} is not a valid currency id`)
 		end
+
+		-- Apply group membership multiplier
+		local multiplier = GroupRewardsService:GetCashMultiplier(Player)
+		Amount = math.floor(Amount * multiplier)
 
 		local PlayerDataStream = DataStream.Stored[Player]
 		local PlayerCurrenciesDataStream = PlayerDataStream.Collections.Currencies

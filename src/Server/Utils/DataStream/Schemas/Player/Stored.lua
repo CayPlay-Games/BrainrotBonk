@@ -73,4 +73,7 @@ return {
 		TotalRobuxSpent = 0, -- Lifetime Robux spent
 		ProductsBought = {}, -- { [ProductIdString] = count }
 	},
+
+	-- Group membership rewards
+	ReceivedGroupRewards = false, -- True if player received group membership rewards
 }

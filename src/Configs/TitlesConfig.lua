@@ -30,5 +30,9 @@ return TableHelper:DeepFreeze({
 			DisplayName = "Legend",
 			Color = Color3.fromRGB(255, 100, 255),
 		},
+		CertifiedBonker = {
+			DisplayName = "Certified Bonker",
+			Color = Color3.fromRGB(0, 200, 255),
+		},
 	},
 })

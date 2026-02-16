@@ -50,6 +50,18 @@ SkinBoxesConfig.Boxes = {
 			{ SkinId = "TrippiTroppi", Weight = 14.2 },
 		},
 	},
+	-- Group exclusive crate - awarded to group members
+	GroupExclusive = {
+		DisplayName = "Certified Bonker Crate",
+		Tier = 3,
+		NotPurchasable = true, -- Cannot be bought in shop
+		EggModel = "GroupExclusive",
+		Skins = {
+			{ SkinId = "TrippiTroppi", Weight = 34 },
+			{ SkinId = "GangsterFootera", Weight = 33 },
+			{ SkinId = "TricTracBarabum", Weight = 33 },
+		},
+	},
 }
 
 -- Helper to calculate total weight for a box
