@@ -42,7 +42,7 @@ return TableHelper:DeepFreeze({
 	LAUNCH_FORCE_MULTIPLIER = 6, -- Power * this = velocity magnitude
 
 	-- Surface physics (applied to map parts)
-	SLIPPERY_FRICTION = 0.05, -- Low friction for ice-like sliding
+	SLIPPERY_FRICTION = 0.14, -- Low friction for ice-like sliding
 	SLIPPERY_ELASTICITY = 0.3, -- Lower elasticity for less bounce on surfaces
 
 	-- Curling stone physics settings
@@ -52,7 +52,7 @@ return TableHelper:DeepFreeze({
 	-- Collision settings (for custom momentum transfer)
 	COLLISION_COOLDOWN = 0.15, -- Seconds between collision responses with same player
 	COLLISION_MIN_SPEED = 1.0, -- Minimum relative speed to trigger collision response
-	CURLING_COLLISION_RESTITUTION = 0.6, -- Lower = more energy absorbed, less bouncy
+	CURLING_COLLISION_RESTITUTION = 0.09, -- Lower = more energy absorbed, less bouncy
 
 	-- Physics box settings (standardized player body during rounds)
 	PHYSICS_BOX_SIZE = Vector3.new(3.5, 5, 3.5), -- Size of the cube
