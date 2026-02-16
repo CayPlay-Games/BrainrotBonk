@@ -47,9 +47,7 @@ return TableHelper:DeepFreeze({
 
 	-- Curling stone physics settings
 	CURLING_DECAY_RATE = 0.993, -- Per-frame velocity multiplier (lower = more friction feel)
-	CURLING_MAX_FORCE = 100000, -- LinearVelocity max force (kept for reference)
 	CURLING_MIN_SPEED = 0.3, -- Below this speed, stop completely (prevents drifting)
-	ANGULAR_RESISTANCE = 10000, -- MaxTorque for rotation control (resists wild spinning)
 
 	-- Collision settings (for custom momentum transfer)
 	COLLISION_COOLDOWN = 0.15, -- Seconds between collision responses with same player
