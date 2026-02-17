@@ -129,7 +129,7 @@ local function UpdateSkinCard(card, skinId, mutation)
 	local mutationConfig = SkinsConfig.Mutations[mutation]
 	local rarity = SkinsConfig.Rarities[skinConfig.Rarity]
 	if rarity then
-		card.BackgroundColor3 = rarity.Color
+		card.ImageColor3 = rarity.Color
 	end
 
 	-- Set name label (show mutation for non-Normal variants)
@@ -235,13 +235,14 @@ local function PopulateGrid()
 		local mutationA = SkinsConfig.Mutations[a.Mutation] or SkinsConfig.Mutations.Normal
 		local mutationB = SkinsConfig.Mutations[b.Mutation] or SkinsConfig.Mutations.Normal
 
-		-- Sort by mutation first (higher mutation sort order = rarer = first)
-		if mutationA.SortOrder ~= mutationB.SortOrder then
-			return mutationA.SortOrder > mutationB.SortOrder
-		end
-		-- Then by rarity (higher rarity first)
+		
+		-- Sort by rarity (higher rarity first)
 		if rarityA.SortOrder ~= rarityB.SortOrder then
 			return rarityA.SortOrder > rarityB.SortOrder
+		end
+		-- Then by mutation first (higher mutation sort order = rarer = first)
+		if mutationA.SortOrder ~= mutationB.SortOrder then
+			return mutationA.SortOrder > mutationB.SortOrder
 		end
 		-- Then alphabetically by skin name
 		return a.SkinId < b.SkinId
@@ -254,13 +255,9 @@ local function PopulateGrid()
 		if card then
 			-- Update existing card
 			UpdateSkinCard(card, combo.SkinId, combo.Mutation)
-			card.LayoutOrder = index
 		else
 			-- Create new card
 			card = CreateSkinCard(combo.SkinId, combo.Mutation)
-			if card then
-				card.LayoutOrder = index
-			end
 		end
 	end
 
