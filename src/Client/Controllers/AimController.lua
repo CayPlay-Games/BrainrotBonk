@@ -52,12 +52,6 @@ local _IsAimLocked = false
 
 -- Internal Functions --
 
-local function DebugLog(...)
-	if RoundConfig.DEBUG_LOG_STATE_CHANGES then
-		print("[AimController]", ...)
-	end
-end
-
 -- Checks if the local player is participating and alive in the current round
 local function IsLocalPlayerInRound()
 	local roundState = ClientDataStream.RoundState
@@ -212,20 +206,15 @@ local function AdjustPower(delta)
 	if not _IsAiming then
 		return
 	end
-
 	_CurrentPower = math.clamp(_CurrentPower + delta, RoundConfig.AIM_POWER_MIN, RoundConfig.AIM_POWER_MAX)
-
-	DebugLog("Power:", _CurrentPower)
 end
 
 -- Submits the current aim to the server
 local function SubmitAim()
 	-- Verify player is still alive before submitting
 	if not IsLocalPlayerInRound() then
-		DebugLog("Cannot submit aim - player not in round or eliminated")
 		return
 	end
-	DebugLog("Submitting aim - Direction:", _CurrentDirection, "Power:", _CurrentPower)
 	SubmitAimRemoteEvent:FireServer(_CurrentDirection, _CurrentPower)
 end
 
@@ -234,10 +223,7 @@ local function StartAiming()
 	if _IsAiming then
 		return
 	end
-
-	DebugLog("Starting aim mode")
 	_IsAiming = true
-
 	-- Reset to default power
 	_CurrentPower = RoundConfig.DEFAULT_AIM_POWER
 
@@ -280,7 +266,6 @@ local function StartAiming()
 	_HasSubmittedAim = false
 	_AimTimerThread = task.delay(RoundConfig.Timers.AIMING_DURATION, function()
 		if _IsAiming and not _HasSubmittedAim then
-			DebugLog("Aiming timer ended, submitting aim")
 			SubmitAim()
 			_HasSubmittedAim = true
 		end
@@ -292,11 +277,7 @@ local function StopAiming()
 	if not _IsAiming then
 		return
 	end
-
-	DebugLog("Stopping aim mode")
-
 	_IsAiming = false
-
 	-- Cancel the aim timer if it hasn't fired yet
 	if _AimTimerThread then
 		task.cancel(_AimTimerThread)
@@ -321,8 +302,6 @@ end
 
 -- Creates arrows for all players during the reveal phase
 local function StartReveal()
-	DebugLog("Starting reveal phase arrows")
-
 	-- Get revealed aims from RoundState in ClientDataStream
 	local roundState = ClientDataStream.RoundState
 	if not roundState then
@@ -359,7 +338,6 @@ local function StartReveal()
 			if arrow then
 				UpdateArrowTransform(arrow, character, direction, power)
 				_RevealArrows[character] = arrow
-				DebugLog("Created reveal arrow for", character.Name)
 			end
 		end
 	end
@@ -367,8 +345,6 @@ end
 
 -- Destroys all reveal phase arrows
 local function StopReveal()
-	DebugLog("Stopping reveal phase arrows")
-
 	for _, arrow in pairs(_RevealArrows) do
 		if arrow then
 			arrow:Destroy()
@@ -378,7 +354,6 @@ local function StopReveal()
 end
 
 -- API Functions --
-
 function AimController:GetCurrentPower()
 	return _CurrentPower
 end
@@ -404,14 +379,11 @@ function AimController:ToggleAimLock()
 		return false
 	end
 	_IsAimLocked = not _IsAimLocked
-	DebugLog("Aim lock toggled:", _IsAimLocked)
 	return _IsAimLocked
 end
 
 -- Initializers --
 function AimController:Init()
-	DebugLog("Initializing...")
-
 	-- Wait for ClientDataStream.RoundState to be ready
 	PromiseWaitForDataStream(ClientDataStream.RoundState):andThen(function(roundState)
 		local lastKnownState = roundState.State:Read()
@@ -424,8 +396,6 @@ function AimController:Init()
 
 			local previousState = lastKnownState
 			lastKnownState = newState
-
-			DebugLog("Round state changed:", previousState, "->", newState)
 
 			-- Handle Aiming phase (only if player is in the round)
 			if newState == "Aiming" and IsLocalPlayerInRound() then
