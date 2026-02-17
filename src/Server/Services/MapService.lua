@@ -12,6 +12,7 @@ local MapService = {}
 -- Roblox Services --
 local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
+local CollectionService = game:GetService("CollectionService")
 
 -- Dependencies --
 local Promise = shared("Promise")
@@ -51,6 +52,22 @@ local function ApplySlipperyPhysics(mapInstance)
 	end
 
 	DebugLog("Applied slippery physics to", partCount, "parts in", mapInstance.Name)
+end
+
+-- Tags map KillPart objects so ServerBindersService can handle elimination logic.
+local function TagKillParts(mapInstance)
+	local taggedCount = 0
+
+	for _, item in ipairs(mapInstance:GetDescendants()) do
+		if item:IsA("BasePart") and item.Name == "KillPart" then
+			CollectionService:AddTag(item, "KillPart")
+			taggedCount = taggedCount + 1
+		end
+	end
+
+	if taggedCount == 0 then
+		warn("[MapService] Map has no KillPart; falling eliminations are disabled")
+	end
 end
 
 -- Extracts spawn points from a map's SpawnPoints folder
@@ -134,6 +151,7 @@ function MapService:LoadMap(mapId)
 
 		-- Apply slippery physics to map surfaces
 		ApplySlipperyPhysics(mapClone)
+		TagKillParts(mapClone)
 
 		-- Extract spawn points
 		local spawnPoints = ExtractSpawnPoints(mapClone)

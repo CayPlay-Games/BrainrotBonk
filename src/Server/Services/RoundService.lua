@@ -65,8 +65,6 @@ local _RoundPlayers = {}
 local _SubmittedAims = {}
 -- Alive players set
 local _AlivePlayers = {}
--- KillPart touch connection
-local _KillPartConnection = nil
 -- Per-player character touch tracking connections
 local _CharacterTouchConnections = {}
 -- Last collision source that could have caused an elimination
@@ -231,52 +229,6 @@ local function ResolveEliminatedBy(player, eliminatedBy)
 	return eliminatedBy
 end
 
--- Sets up KillPart detection for the current map
-local function SetupKillPartDetection()
-	-- Clean up existing connection
-	if _KillPartConnection then
-		_KillPartConnection:Disconnect()
-		_KillPartConnection = nil
-	end
-
-	-- Find KillPart in current map
-	local currentMap = MapService:GetCurrentMapInstance()
-	if not currentMap then
-		DebugLog("No current map, skipping KillPart setup")
-		return
-	end
-
-	local killPart = currentMap:FindFirstChild("KillPart", true)
-	if not killPart then
-		warn("[RoundService] Map has no KillPart - players cannot be eliminated by falling")
-		return
-	end
-
-	DebugLog("Setting up KillPart detection")
-
-	_KillPartConnection = killPart.Touched:Connect(function(otherPart)
-		-- Find which player/dummy this part belongs to
-		local model = otherPart:FindFirstAncestorOfClass("Model")
-		if not model then return end
-
-		-- Check all alive players/dummies
-		for entity in pairs(_AlivePlayers) do
-			if entity.Character == model then
-				RoundService:EliminatePlayer(entity, "Fall")
-				return
-			end
-		end
-	end)
-end
-
--- Cleans up KillPart detection
-local function CleanupKillPartDetection()
-	if _KillPartConnection then
-		_KillPartConnection:Disconnect()
-		_KillPartConnection = nil
-	end
-end
-
 -- Creates a dummy player object for testing (DEBUG_MODE only)
 local function CreateDummyPlayer(spawnCFrame)
 	local dummyId = _NextDummyId
@@ -347,7 +299,9 @@ end
 -- Teleports a player to the lobby spawn
 local function TeleportToLobby(player)
 	local character = player.Character
-	if not character then return end
+	if not character then
+		return
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if hrp then
@@ -386,7 +340,6 @@ local TransitionTo
 
 local function EnterWaiting()
 	DebugLog("Entering Waiting state")
-	CleanupKillPartDetection()
 	CleanupCharacterTouchTracking()
 
 	-- Reset all round data
@@ -423,8 +376,12 @@ local function EnterWaiting()
 
 		task.delay(mapSelectionDelay, function()
 			-- Only proceed if still in Waiting state
-			if _CurrentState ~= States.Waiting then return end
-			if not CanStartRound() then return end
+			if _CurrentState ~= States.Waiting then
+				return
+			end
+			if not CanStartRound() then
+				return
+			end
 
 			-- Select map and show notification (triggers client roulette animation)
 			-- Priority: 1) Robux queue, 2) DEFAULT_MAP, 3) Random
@@ -441,17 +398,23 @@ local function EnterWaiting()
 			-- Delay map loading to let roulette animation play (3 seconds)
 			task.delay(3, function()
 				-- Only proceed if still in Waiting state
-				if _CurrentState ~= States.Waiting then return end
-				if not CanStartRound() then return end
+				if _CurrentState ~= States.Waiting then
+					return
+				end
+				if not CanStartRound() then
+					return
+				end
 
-				MapService:LoadMap(mapId):andThen(function(spawnPoints)
-					_CurrentSpawnPoints = spawnPoints
-					_MapLoadedDuringCountdown = true
-					DebugLog("Map loaded during countdown:", mapId)
-				end):catch(function(err)
-					warn("[RoundService] Failed to load map during countdown:", err)
-					_MapLoadedDuringCountdown = false
-				end)
+				MapService:LoadMap(mapId)
+					:andThen(function(spawnPoints)
+						_CurrentSpawnPoints = spawnPoints
+						_MapLoadedDuringCountdown = true
+						DebugLog("Map loaded during countdown:", mapId)
+					end)
+					:catch(function(err)
+						warn("[RoundService] Failed to load map during countdown:", err)
+						_MapLoadedDuringCountdown = false
+					end)
 			end)
 		end)
 
@@ -540,34 +503,36 @@ local function EnterMapLoading()
 	local mapId = MapsConfig.DEFAULT_MAP
 
 	-- Load the map via MapService
-	MapService:LoadMap(mapId):andThen(function(spawnPoints)
-		if _CurrentState ~= States.MapLoading then
-			return -- State changed while loading, abort
-		end
+	MapService:LoadMap(mapId)
+		:andThen(function(spawnPoints)
+			if _CurrentState ~= States.MapLoading then
+				return -- State changed while loading, abort
+			end
 
-		_CurrentSpawnPoints = spawnPoints
+			_CurrentSpawnPoints = spawnPoints
 
-		-- Update DataStream with map info
-		local mapConfig = MapsConfig.Maps[mapId]
-		DataStream.RoundState.CurrentMapId = mapId
-		DataStream.RoundState.CurrentMapName = mapConfig and mapConfig.DisplayName or mapId
+			-- Update DataStream with map info
+			local mapConfig = MapsConfig.Maps[mapId]
+			DataStream.RoundState.CurrentMapId = mapId
+			DataStream.RoundState.CurrentMapName = mapConfig and mapConfig.DisplayName or mapId
 
-		DebugLog("Map loaded:", mapId, "with", #spawnPoints, "spawn points")
-		TransitionTo(States.Spawning)
-	end):catch(function(err)
-		warn("[RoundService] Failed to load map:", err)
-		-- Fallback: generate circular spawn points facing center
-		_CurrentSpawnPoints = {}
-		for i = 1, 12 do
-			local angle = (i - 1) * (2 * math.pi / 12)
-			local radius = 20
-			local pos = Vector3.new(math.cos(angle) * radius, 5, math.sin(angle) * radius)
-			_CurrentSpawnPoints[i] = CFrame.lookAt(pos, Vector3.new(0, pos.Y, 0))
-		end
-		DataStream.RoundState.CurrentMapId = "Fallback"
-		DataStream.RoundState.CurrentMapName = "Fallback Arena"
-		TransitionTo(States.Spawning)
-	end)
+			DebugLog("Map loaded:", mapId, "with", #spawnPoints, "spawn points")
+			TransitionTo(States.Spawning)
+		end)
+		:catch(function(err)
+			warn("[RoundService] Failed to load map:", err)
+			-- Fallback: generate circular spawn points facing center
+			_CurrentSpawnPoints = {}
+			for i = 1, 12 do
+				local angle = (i - 1) * (2 * math.pi / 12)
+				local radius = 20
+				local pos = Vector3.new(math.cos(angle) * radius, 5, math.sin(angle) * radius)
+				_CurrentSpawnPoints[i] = CFrame.lookAt(pos, Vector3.new(0, pos.Y, 0))
+			end
+			DataStream.RoundState.CurrentMapId = "Fallback"
+			DataStream.RoundState.CurrentMapName = "Fallback Arena"
+			TransitionTo(States.Spawning)
+		end)
 end
 
 local function EnterSpawning()
@@ -593,6 +558,7 @@ local function EnterSpawning()
 	for i, spawnCFrame in ipairs(_CurrentSpawnPoints) do
 		shuffledSpawnPoints[i] = spawnCFrame
 	end
+
 	for i = #shuffledSpawnPoints, 2, -1 do
 		local j = math.random(1, i)
 		shuffledSpawnPoints[i], shuffledSpawnPoints[j] = shuffledSpawnPoints[j], shuffledSpawnPoints[i]
@@ -650,8 +616,6 @@ local function EnterSpawning()
 		DebugLog("Spawned dummy player for testing")
 	end
 
-	-- Setup KillPart detection for eliminations
-	SetupKillPartDetection()
 	SetupCharacterTouchTracking()
 
 	UpdateDataStream()
@@ -801,11 +765,8 @@ local function EnterLaunching()
 					local velocityMagnitude = aim.Power * RoundConfig.LAUNCH_FORCE_MULTIPLIER
 					local direction = aim.Direction.Unit
 					-- Apply velocity directly (XZ only, Y starts at 0)
-					hrp.AssemblyLinearVelocity = Vector3.new(
-						direction.X * velocityMagnitude,
-						0,
-						direction.Z * velocityMagnitude
-					)
+					hrp.AssemblyLinearVelocity =
+						Vector3.new(direction.X * velocityMagnitude, 0, direction.Z * velocityMagnitude)
 
 					-- Register with PhysicsService for custom collision handling
 					PhysicsService:RegisterPhysicsBox(hrp)
@@ -939,8 +900,6 @@ local function EnterRoundEnd()
 	UpdateDataStream()
 	RoundService.RoundEnded:Fire(winner)
 
-	-- Cleanup KillPart detection
-	CleanupKillPartDetection()
 	CleanupCharacterTouchTracking()
 
 	-- After round end duration, go back to waiting
@@ -1110,6 +1069,11 @@ function RoundService:IsPlayerAlive(player)
 	return _AlivePlayers[player] == true
 end
 
+-- Gets the alive round entity (player or dummy) that owns a character model.
+function RoundService:GetAliveEntityFromCharacter(model)
+	return ResolveEntityFromCharacterModel(model)
+end
+
 -- Toggles AFK status for a player
 function RoundService:ToggleAFK(player)
 	if not CanToggleAFK() then
@@ -1192,7 +1156,6 @@ function RoundService:Init()
 					end
 				end)
 			end
-
 		end)
 	end)
 
