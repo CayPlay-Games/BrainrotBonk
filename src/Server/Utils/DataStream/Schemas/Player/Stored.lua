@@ -1,25 +1,11 @@
 return {
-	_VERSION = 3,
+	_VERSION = 4,
 
 	Collections = {
 		Currencies = {
 			Coins = 100000,
 		},
 	},
-
-	Upgrades = {
-		StartingSteps = 0,
-		StepEfficiency = 0,
-		JumpCostReduction = 0,
-		JumpHeight = 0,
-	},
-
-	Level = {
-		Current = 1,
-		XP = 0,
-	},
-
-	Cosmetics = {},
 
 	Skins = {
 		Equipped = "FluriFlura", -- Currently equipped skin ID
@@ -51,6 +37,23 @@ return {
 		CurrenciesGained = {
 			Coins = 0, -- Total coins earned (lifetime)
 		},
+		-- Lifetime stats for leaderboard tracking
+		TotalKills = 0, -- Lifetime player-caused eliminations
+		TotalRoundsPlayed = 0, -- Lifetime rounds completed
+	},
+
+	-- Biweekly leaderboard tracking
+	Leaderboard = {
+		-- Current period stats (reset every 2 weeks)
+		PeriodStats = {
+			Kills = 0,
+			RoundsPlayed = 0,
+			CashEarned = 0,
+		},
+		-- Period identifier to detect resets (format: "2024-BW07")
+		CurrentPeriodId = "",
+		-- Track rewards already claimed (array of period IDs)
+		RewardsClaimed = {},
 	},
 
 	Spins = 0, -- Number of spins available
