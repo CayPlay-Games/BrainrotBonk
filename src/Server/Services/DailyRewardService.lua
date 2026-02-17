@@ -46,14 +46,9 @@ local function GetDay7Skin(cycleCount)
 	return skinData.SkinId, skinData.Mutation
 end
 
--- Awards a skin to the player (same pattern as SkinShopService)
+-- Awards a skin to the player using Collections
 local function AwardSkin(player, skinId, mutation)
 	mutation = mutation or "Normal"
-
-	local stored = DataStream.Stored[player]
-	if not stored then
-		return false
-	end
 
 	-- Check if skin exists in config
 	if not SkinsConfig.Skins[skinId] then
@@ -67,52 +62,12 @@ local function AwardSkin(player, skinId, mutation)
 		mutation = "Normal"
 	end
 
-	local collected = stored.Skins.Collected:Read() or {}
-
-	-- Check if player already owns this skin
-	local existingEntry = nil
-	local existingIndex = nil
-	for i, entry in ipairs(collected) do
-		if entry.SkinId == skinId then
-			existingEntry = entry
-			existingIndex = i
-			break
-		end
+	local itemId = skinId .. "_" .. mutation
+	local success = CollectionsService:GiveItem(player, "Skins", itemId, 1)
+	if success then
+		print("[DailyRewardService]", player.Name, "awarded skin:", skinId, "with mutation:", mutation)
 	end
-
-	if existingEntry then
-		-- Already owns skin - check if mutation is new
-		local hasMutation = false
-		for _, existingMutation in ipairs(existingEntry.Mutations or {}) do
-			if existingMutation == mutation then
-				hasMutation = true
-				break
-			end
-		end
-
-		if hasMutation then
-			-- Already has this exact skin+mutation
-			print("[DailyRewardService]", player.Name, "already owns skin:", skinId, "with mutation:", mutation)
-			return false
-		else
-			-- Add new mutation to existing skin
-			existingEntry.Mutations = existingEntry.Mutations or {}
-			table.insert(existingEntry.Mutations, mutation)
-			collected[existingIndex] = existingEntry
-			stored.Skins.Collected = collected
-			print("[DailyRewardService]", player.Name, "awarded new mutation:", mutation, "for skin:", skinId)
-			return true
-		end
-	else
-		-- Add new skin with the mutation
-		table.insert(collected, {
-			SkinId = skinId,
-			Mutations = { mutation },
-		})
-		stored.Skins.Collected = collected
-		print("[DailyRewardService]", player.Name, "awarded new skin:", skinId, "with mutation:", mutation)
-		return true
-	end
+	return success
 end
 
 -- Calculates time remaining until next claim

@@ -53,7 +53,7 @@ local function CanAfford(player, boxId, currencyType)
 	return true
 end
 
--- Awards a skin + mutation to the player
+-- Awards a skin + mutation to the player using Collections
 -- Returns: isNewSkin, isNewMutation
 local function AwardSkin(player, skinId, mutation)
 	mutation = mutation or "Normal"
@@ -73,52 +73,41 @@ local function AwardSkin(player, skinId, mutation)
 		mutation = "Normal"
 	end
 
-	local collected = stored.Skins.Collected:Read() or {}
+	local itemId = skinId .. "_" .. mutation
 
-	-- Check if player already owns this skin
-	local existingEntry = nil
-	local existingIndex = nil
-	for i, entry in ipairs(collected) do
-		if entry.SkinId == skinId then
-			existingEntry = entry
-			existingIndex = i
-			break
-		end
+	-- Check if player already owns this skin+mutation
+	local ownedCount = 0
+	if stored.Collections and stored.Collections.Skins then
+		local ownedSkins = stored.Collections.Skins:Read() or {}
+		ownedCount = ownedSkins[itemId] or 0
 	end
 
-	if existingEntry then
-		-- Already owns skin - check if mutation is new
-		local hasMutation = false
-		for _, existingMutation in ipairs(existingEntry.Mutations or {}) do
-			if existingMutation == mutation then
-				hasMutation = true
+	if ownedCount >= 1 then
+		-- Already owns this skin+mutation
+		DebugLog(player.Name, "already owns skin:", skinId, "with mutation:", mutation)
+		return false, false
+	end
+
+	-- Check if player owns any mutation of this skin (for isNewSkin return value)
+	local ownsAnySkinMutation = false
+	if stored.Collections and stored.Collections.Skins then
+		local ownedSkins = stored.Collections.Skins:Read() or {}
+		for ownedItemId, count in pairs(ownedSkins) do
+			if count >= 1 and string.match(ownedItemId, "^" .. skinId .. "_") then
+				ownsAnySkinMutation = true
 				break
 			end
 		end
-
-		if hasMutation then
-			-- Already has this mutation
-			DebugLog(player.Name, "already owns skin:", skinId, "with mutation:", mutation)
-			return false, false
-		else
-			-- Add new mutation to existing skin
-			existingEntry.Mutations = existingEntry.Mutations or {}
-			table.insert(existingEntry.Mutations, mutation)
-			collected[existingIndex] = existingEntry
-			stored.Skins.Collected = collected
-			DebugLog(player.Name, "awarded new mutation:", mutation, "for skin:", skinId)
-			return false, true
-		end
-	else
-		-- Add new skin with the rolled mutation
-		table.insert(collected, {
-			SkinId = skinId,
-			Mutations = { mutation },
-		})
-		stored.Skins.Collected = collected
-		DebugLog(player.Name, "awarded new skin:", skinId, "with mutation:", mutation)
-		return true, true
 	end
+
+	-- Award the skin
+	local success = CollectionsService:GiveItem(player, "Skins", itemId, 1)
+	if success then
+		DebugLog(player.Name, "awarded skin:", skinId, "with mutation:", mutation)
+		return not ownsAnySkinMutation, true -- isNewSkin, isNewMutation
+	end
+
+	return false, false
 end
 
 -- Handles a coin purchase request

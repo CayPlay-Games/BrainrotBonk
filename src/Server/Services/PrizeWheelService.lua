@@ -151,36 +151,10 @@ local function ResolveMutationId(rewardConfig)
 	return nil
 end
 
-local function EnsureSkinWithMutation(stored, skinId, mutationId)
-	local collected = stored.Skins.Collected:Read() or {}
-	local existingEntry = nil
-	local existingIndex = nil
-
-	for index, entry in ipairs(collected) do
-		if entry.SkinId == skinId then
-			existingEntry = entry
-			existingIndex = index
-			break
-		end
-	end
-
-	if existingEntry then
-		existingEntry.Mutations = existingEntry.Mutations or {}
-		if table.find(existingEntry.Mutations, mutationId) == nil then
-			table.insert(existingEntry.Mutations, mutationId)
-			collected[existingIndex] = existingEntry
-			stored.Skins.Collected = collected
-			return true
-		end
-		return false
-	end
-
-	table.insert(collected, {
-		SkinId = skinId,
-		Mutations = { mutationId },
-	})
-	stored.Skins.Collected = collected
-	return true
+local function EnsureSkinWithMutation(player, skinId, mutationId)
+	local itemId = skinId .. "_" .. mutationId
+	local success = CollectionsService:GiveItem(player, "Skins", itemId, 1)
+	return success
 end
 
 local function GrantMutationReward(player, rewardConfig)
@@ -195,23 +169,32 @@ local function GrantMutationReward(player, rewardConfig)
 	end
 
 	local preferredSkinId = ResolveSkinId(rewardConfig)
-	local collected = stored.Skins.Collected:Read() or {}
+
+	-- Get owned skins from Collections
+	local ownedSkins = {}
+	if stored.Collections and stored.Collections.Skins then
+		ownedSkins = stored.Collections.Skins:Read() or {}
+	end
 
 	if preferredSkinId and SkinsConfig.Skins[preferredSkinId] then
-		if EnsureSkinWithMutation(stored, preferredSkinId, mutationId) then
+		if EnsureSkinWithMutation(player, preferredSkinId, mutationId) then
 			return true
 		end
 	end
 
-	for _, entry in ipairs(collected) do
-		if SkinsConfig.Skins[entry.SkinId] and EnsureSkinWithMutation(stored, entry.SkinId, mutationId) then
-			return true
+	-- Try to add mutation to any owned skin
+	for itemId, count in pairs(ownedSkins) do
+		if count >= 1 then
+			local skinId = string.match(itemId, "^(.+)_[^_]+$")
+			if skinId and SkinsConfig.Skins[skinId] and EnsureSkinWithMutation(player, skinId, mutationId) then
+				return true
+			end
 		end
 	end
 
 	local equippedSkin = stored.Skins.Equipped:Read() or SkinsConfig.DEFAULT_SKIN
 	if SkinsConfig.Skins[equippedSkin] then
-		return EnsureSkinWithMutation(stored, equippedSkin, mutationId)
+		return EnsureSkinWithMutation(player, equippedSkin, mutationId)
 	end
 
 	return false
@@ -246,12 +229,7 @@ local function GrantReward(player, rewardConfig, sourceSku)
 			return false
 		end
 
-		local stored = DataStream.Stored[player]
-		if not stored then
-			return false
-		end
-
-		return EnsureSkinWithMutation(stored, skinId, "Normal")
+		return EnsureSkinWithMutation(player, skinId, "Normal")
 	end
 
 	if rewardType == "Mutation" then

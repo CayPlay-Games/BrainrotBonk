@@ -17,6 +17,7 @@ local RankHelper = shared("RankHelper")
 local DataStream = shared("DataStream")
 local RoundConfig = shared("RoundConfig")
 local BadgeService = shared("BadgeService")
+local CollectionsService = shared("CollectionsService")
 
 -- Private Variables --
 
@@ -34,10 +35,8 @@ local function GiveSingleReward(player, reward)
 	if not stored then return end
 
 	if reward.Type == "Title" then
-		local unlocked = stored.Titles.Unlocked:Read() or {}
-		if not table.find(unlocked, reward.Id) then
-			table.insert(unlocked, reward.Id)
-			stored.Titles.Unlocked = unlocked
+		local success = CollectionsService:GiveItem(player, "Titles", reward.Id, 1)
+		if success then
 			DebugLog(player.Name, "unlocked title:", reward.Id)
 		end
 
@@ -47,27 +46,11 @@ local function GiveSingleReward(player, reward)
 		DebugLog(player.Name, "received", reward.Amount, "Coins")
 
 	elseif reward.Type == "Skin" then
-		local collected = stored.Skins.Collected:Read() or {}
-		-- Check if skin already exists
-		local existingEntry = nil
-		for _, entry in ipairs(collected) do
-			if entry.SkinId == reward.Id then
-				existingEntry = entry
-				break
-			end
+		local itemId = reward.Id .. "_Normal"
+		local success = CollectionsService:GiveItem(player, "Skins", itemId, 1)
+		if success then
+			DebugLog(player.Name, "unlocked skin:", reward.Id)
 		end
-
-		if existingEntry then
-			-- Add Normal mutation if not already present
-			if not table.find(existingEntry.Mutations, "Normal") then
-				table.insert(existingEntry.Mutations, "Normal")
-			end
-		else
-			-- Add new skin entry with Normal mutation
-			table.insert(collected, { SkinId = reward.Id, Mutations = { "Normal" } })
-		end
-		stored.Skins.Collected = collected
-		DebugLog(player.Name, "unlocked skin:", reward.Id)
 
 	elseif reward.Type == "Spins" then
 		local current = stored.Spins:Read() or 0

@@ -20,6 +20,7 @@ local LeaderboardConfig = shared("LeaderboardConfig")
 local SkinsConfig = shared("SkinsConfig")
 local GetSafeDataStoreName = shared("GetSafeDataStoreName")
 local FormatHelper = shared("FormatHelper")
+local CollectionsService = shared("CollectionsService")
 
 -- Private Variables --
 local _PendingUpdates = {} -- userId -> { category -> value }
@@ -331,46 +332,18 @@ function LeaderboardService:AwardLeaderboardSkin(player, skinId, mutation, perio
 		return false
 	end
 
-	local collected = stored.Skins.Collected:Read() or {}
-
-	-- Check if already owns skin
-	local existingEntry = nil
-	local existingIndex = nil
-	for i, entry in ipairs(collected) do
-		if entry.SkinId == skinId then
-			existingEntry = entry
-			existingIndex = i
-			break
-		end
-	end
-
-	if existingEntry then
-		-- Check if mutation is new
-		if table.find(existingEntry.Mutations, mutation) then
-			return false
-		end
-
-		table.insert(existingEntry.Mutations, mutation)
-		collected[existingIndex] = existingEntry
-	else
-		-- Add new skin
-		table.insert(collected, {
-			SkinId = skinId,
-			Mutations = { mutation },
-		})
-	end
-
-	stored.Skins.Collected = collected
+	local itemId = skinId .. "_" .. mutation
+	local success = CollectionsService:GiveItem(player, "Skins", itemId, 1)
 
 	-- Track that reward was claimed for this period
-	if periodId then
+	if success and periodId then
 		local claimed = stored.Leaderboard.RewardsClaimed:Read() or {}
 		if not table.find(claimed, periodId) then
 			table.insert(claimed, periodId)
 			stored.Leaderboard.RewardsClaimed = claimed
 		end
 	end
-	return true
+	return success
 end
 
 -- Queue reward for offline player

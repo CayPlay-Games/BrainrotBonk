@@ -317,19 +317,9 @@ function SkinService:Init()
 		local stored = DataStream.Stored[player]
 		if not stored then return end
 
-		local collected = stored.Skins.Collected:Read() or {}
-		local ownsMutation = false
-		for _, entry in ipairs(collected) do
-			if entry.SkinId == skinId then
-				for _, ownedMutation in ipairs(entry.Mutations or { "Normal" }) do
-					if ownedMutation == mutation then
-						ownsMutation = true
-						break
-					end
-				end
-				break
-			end
-		end
+		local itemId = skinId .. "_" .. mutation
+		local ownedSkins = stored.Collections and stored.Collections.Skins and stored.Collections.Skins:Read() or {}
+		local ownsMutation = (ownedSkins[itemId] or 0) >= 1
 
 		if not ownsMutation then
 			DebugLog(player.Name, "tried to equip unowned skin+mutation:", skinId, mutation)

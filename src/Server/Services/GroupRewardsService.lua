@@ -17,10 +17,12 @@ local Players = game:GetService("Players")
 
 -- Dependencies --
 local DataStream = shared("DataStream")
+local DataService = shared("DataService")
 local GroupRewardsConfig = shared("GroupRewardsConfig")
 local SkinsConfig = shared("SkinsConfig")
 local SkinBoxesConfig = shared("SkinBoxesConfig")
 local GetRemoteEvent = shared("GetRemoteEvent")
+local CollectionsService = shared("CollectionsService")
 
 -- Remote Events --
 local SkinBoxResultRemoteEvent = GetRemoteEvent("SkinBoxResult")
@@ -50,62 +52,34 @@ local function CheckGroupMembership(player)
 	end
 end
 
--- Awards a skin to the player
+-- Awards a skin to the player using Collections
 local function AwardSkin(player, skinId, mutation)
 	mutation = mutation or "Normal"
-
-	local stored = DataStream.Stored[player]
-	if not stored then return false end
 
 	if not SkinsConfig.Skins[skinId] then
 		warn("[GroupRewardsService] Skin not found in config:", skinId)
 		return false
 	end
 
-	local collected = stored.Skins.Collected:Read() or {}
-
-	-- Check if player already owns this skin
-	for _, entry in ipairs(collected) do
-		if entry.SkinId == skinId then
-			-- Already owns skin, check for mutation
-			if not table.find(entry.Mutations, mutation) then
-				table.insert(entry.Mutations, mutation)
-				stored.Skins.Collected = collected
-			end
-			return true
-		end
-	end
-
-	-- Add new skin with the mutation
-	table.insert(collected, {
-		SkinId = skinId,
-		Mutations = { mutation },
-	})
-	stored.Skins.Collected = collected
-	return true
-end
-
--- Awards a title to the player
-local function AwardTitle(player, titleId)
-	local stored = DataStream.Stored[player]
-	if not stored then return false end
-
-	local unlocked = stored.Titles.Unlocked:Read() or {}
-	if not table.find(unlocked, titleId) then
-		table.insert(unlocked, titleId)
-		stored.Titles.Unlocked = unlocked
-		return true
-	end
-
-	return false -- Already unlocked
+	local itemId = skinId .. "_" .. mutation
+	local success = CollectionsService:GiveItem(player, "Skins", itemId, 1)
+	return success
 end
 
 -- Grants all group rewards to a player
 local function GrantGroupRewards(player)
 	local stored = DataStream.Stored[player]
-	if not stored then return end
+	if not stored then
+		warn("[GroupRewardsService] No stored data for", player.Name)
+		return
+	end
 
-	-- Check if already received
+	-- Always ensure title is unlocked for group members
+	local titleId = GroupRewardsConfig.TITLE_ID
+	local success, response = CollectionsService:GiveItem(player, "Titles", titleId, 1)
+	print("[GroupRewardsService]", player.Name, "title awarded:", success, "titleId:", titleId, "response:", response)
+
+	-- Check if already received one-time rewards
 	local hasReceived = stored.ReceivedGroupRewards:Read()
 	if hasReceived then
 		return
@@ -123,9 +97,6 @@ local function GrantGroupRewards(player)
 	-- -- Award the rolled skin
 	-- AwardSkin(player, skinId, mutation)
 
-	-- Award title
-	AwardTitle(player, GroupRewardsConfig.TITLE_ID)
-
 	-- Mark as received
 	stored.ReceivedGroupRewards = true
 	--DebugLog(player.Name, "granted all group rewards - rolled skin:", skinId)
@@ -141,25 +112,14 @@ end
 
 -- Handles player joining
 local function OnPlayerAdded(player)
-	-- Wait for data to be ready
-	-- TODO - add promise-based waiting in DataStream
-	local stored = DataStream.Stored[player]
-	if not stored then
-		-- Wait for data to load
-		local startTime = tick()
-		while not DataStream.Stored[player] and tick() - startTime < 10 do
-			task.wait(0.5)
+	-- Wait for profile data to be fully loaded (not just DataStream existence)
+	DataService:OnPlayerDataLoaded(player, function()
+		local isInGroup = CheckGroupMembership(player)
+		print("[GroupRewardsService]", player.Name, "group check:", isInGroup, "groupId:", GroupRewardsConfig.GROUP_ID)
+		if isInGroup then
+			GrantGroupRewards(player)
 		end
-		stored = DataStream.Stored[player]
-		if not stored then
-			warn("[GroupRewardsService] Player data not loaded for:", player.Name)
-			return
-		end
-	end
-
-	if CheckGroupMembership(player) then
-		GrantGroupRewards(player)
-	end
+	end)
 end
 
 -- Handles player leaving

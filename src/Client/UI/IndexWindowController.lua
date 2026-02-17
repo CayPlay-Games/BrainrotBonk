@@ -77,10 +77,10 @@ local function DebugLog(...)
 	end
 end
 
--- Helper to safely get collected skins data
-local function GetCollectedData()
-	if _PlayerStoredDataStream and _PlayerStoredDataStream.Skins then
-		return _PlayerStoredDataStream.Skins.Collected:Read() or {}
+-- Helper to safely get collected skins data from Collections
+local function GetCollectedSkinsData()
+	if _PlayerStoredDataStream and _PlayerStoredDataStream.Collections and _PlayerStoredDataStream.Collections.Skins then
+		return _PlayerStoredDataStream.Collections.Skins:Read() or {}
 	end
 	return {}
 end
@@ -92,6 +92,7 @@ local function InvalidateCollectionCache()
 end
 
 -- Builds efficient lookup structures for collection data (lazy cached)
+-- Collections.Skins format: { ["SkinId_MutationId"] = count }
 local function BuildCollectionLookup()
 	if _CachedCollectionLookup then
 		return _CachedCollectionLookup, _CachedMutationCounts
@@ -105,13 +106,20 @@ local function BuildCollectionLookup()
 		_CachedMutationCounts[mutation] = 0
 	end
 
-	for _, entry in ipairs(GetCollectedData()) do
-		_CachedCollectionLookup[entry.SkinId] = {}
-		for _, mutation in ipairs(entry.Mutations) do
-			_CachedCollectionLookup[entry.SkinId][mutation] = true
-			-- Only count mutations that exist in SkinsConfig
-			if _CachedMutationCounts[mutation] then
-				_CachedMutationCounts[mutation] = _CachedMutationCounts[mutation] + 1
+	local ownedSkins = GetCollectedSkinsData()
+	for itemId, count in pairs(ownedSkins) do
+		if count >= 1 then
+			-- Parse "SkinId_MutationId" format
+			local skinId, mutationId = string.match(itemId, "^(.+)_([^_]+)$")
+			if skinId and mutationId then
+				if not _CachedCollectionLookup[skinId] then
+					_CachedCollectionLookup[skinId] = {}
+				end
+				_CachedCollectionLookup[skinId][mutationId] = true
+				-- Only count mutations that exist in SkinsConfig
+				if _CachedMutationCounts[mutationId] then
+					_CachedMutationCounts[mutationId] = _CachedMutationCounts[mutationId] + 1
+				end
 			end
 		end
 	end
@@ -206,8 +214,11 @@ end
 -- Gets total collected across all mutations (for header display)
 local function GetTotalCollectedCount()
 	local count = 0
-	for _, entry in ipairs(GetCollectedData()) do
-		count = count + #entry.Mutations
+	local ownedSkins = GetCollectedSkinsData()
+	for _, ownedCount in pairs(ownedSkins) do
+		if ownedCount >= 1 then
+			count = count + 1
+		end
 	end
 	return count
 end
@@ -501,18 +512,25 @@ local function PopulateTitlesGrid()
 	end
 	_TitleCards = {}
 
-	-- Get unlocked titles and equipped title from player data
-	local unlocked = {}
+	-- Get unlocked titles from Collections and equipped title from Titles
+	local ownedTitles = {}
 	local equipped = nil
-	if _PlayerStoredDataStream and _PlayerStoredDataStream.Titles then
-		unlocked = _PlayerStoredDataStream.Titles.Unlocked:Read() or {}
-		equipped = _PlayerStoredDataStream.Titles.Equipped:Read()
+	if _PlayerStoredDataStream then
+		if _PlayerStoredDataStream.Collections and _PlayerStoredDataStream.Collections.Titles then
+			ownedTitles = _PlayerStoredDataStream.Collections.Titles:Read() or {}
+		end
+		if _PlayerStoredDataStream.Titles then
+			equipped = _PlayerStoredDataStream.Titles.Equipped:Read()
+		end
 	end
+
+	DebugLog("Titles owned:", ownedTitles, "equipped:", equipped)
 
 	-- Collect all titles and sort them (unlocked first, then locked)
 	local sortedTitles = {}
 	for titleId, titleConfig in pairs(TitlesConfig.Titles) do
-		local isUnlocked = table.find(unlocked, titleId) ~= nil
+		-- Collections stores count, so owned if count >= 1
+		local isUnlocked = (ownedTitles[titleId] or 0) >= 1
 		table.insert(sortedTitles, {
 			id = titleId,
 			config = titleConfig,
@@ -686,11 +704,13 @@ function IndexWindowController:Init()
 		UIController:WhenScreenGuiReady("IndexWindow", function(screenGui)
 			SetupUI(screenGui)
 
-			-- Listen for collection changes
-			_PlayerStoredDataStream.Skins.Collected:Changed(function()
-				InvalidateCollectionCache()
-				PopulateGrid()
-			end)
+			-- Listen for skins collection changes
+			if _PlayerStoredDataStream.Collections and _PlayerStoredDataStream.Collections.Skins then
+				_PlayerStoredDataStream.Collections.Skins:Changed(function()
+					InvalidateCollectionCache()
+					PopulateGrid()
+				end)
+			end
 
 			-- Listen for title changes
 			_PlayerStoredDataStream.Titles.Equipped:Changed(function()
@@ -699,11 +719,14 @@ function IndexWindowController:Init()
 				end
 			end)
 
-			_PlayerStoredDataStream.Titles.Unlocked:Changed(function()
-				if _SelectedTopTab == "Titles" then
-					PopulateTitlesGrid()
-				end
-			end)
+			-- Listen for titles collection changes
+			if _PlayerStoredDataStream.Collections and _PlayerStoredDataStream.Collections.Titles then
+				_PlayerStoredDataStream.Collections.Titles:Changed(function()
+					if _SelectedTopTab == "Titles" then
+						PopulateTitlesGrid()
+					end
+				end)
+			end
 
 			-- Initial population
 			PopulateGrid()

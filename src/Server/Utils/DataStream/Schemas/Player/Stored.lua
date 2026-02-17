@@ -1,26 +1,30 @@
 return {
-	_VERSION = 4,
+	_VERSION = 6,
 
 	Collections = {
 		Currencies = {
 			Coins = 100000,
+		},
+		Titles = {
+			Newbie = 1, -- Default title owned
+		},
+		Skins = {
+			-- Format: SkinId_MutationId = 1
+			FluriFlura_Normal = 1,
+			FluriFlura_Golden = 1,
+			TimCheese_Normal = 1,
+			LiriliLarila_Normal = 1,
+			TalpaDiFero_Normal = 1,
 		},
 	},
 
 	Skins = {
 		Equipped = "FluriFlura", -- Currently equipped skin ID
 		EquippedMutation = "Normal", -- Which mutation variant is equipped
-		Collected = { -- Skins collected (unlocked if any mutation exists for skin)
-			{ SkinId = "FluriFlura", Mutations = { "Normal", "Golden" } },
-			{ SkinId = "TimCheese", Mutations = { "Normal" } },
-			{ SkinId = "LiriliLarila", Mutations = { "Normal" } },
-			{ SkinId = "TalpaDiFero", Mutations = { "Normal" } },
-		},
 	},
 
 	Titles = {
 		Equipped = "Newbie", -- Currently equipped title ID (nil = no title)
-		Unlocked = { "Newbie" }, -- Array of unlocked title IDs
 	},
 
 	Auras = {

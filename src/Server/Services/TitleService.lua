@@ -187,8 +187,8 @@ function TitleService:Init()
 
 		-- Validate player owns title (if not nil)
 		if titleId ~= nil then
-			local unlocked = stored.Titles.Unlocked:Read()
-			if not unlocked or not table.find(unlocked, titleId) then
+			local ownedTitles = stored.Collections and stored.Collections.Titles and stored.Collections.Titles:Read() or {}
+			if (ownedTitles[titleId] or 0) < 1 then
 				DebugLog(player.Name, "tried to equip unowned title:", titleId)
 				return
 			end
