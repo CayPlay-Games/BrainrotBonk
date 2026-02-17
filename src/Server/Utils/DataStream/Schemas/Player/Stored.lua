@@ -67,6 +67,13 @@ return {
 		CycleCount = 1, -- Which cycle we're on (determines Day 7 skin)
 	},
 
+	Quests = {
+		LastDailyReset = 0, -- os.time() when daily quest progress was last reset
+		LastWeeklyReset = 0, -- os.time() when weekly quest progress was last reset
+		Progress = {}, -- { [QuestId] = number }
+		Claimed = {}, -- { [QuestId] = true }
+	},
+
 	-- Monetization tracking
 	PurchaseReceiptsProcessed = {}, -- { [PurchaseId] = true } - prevents duplicate processing
 	Monetization = {

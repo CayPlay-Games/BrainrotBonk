@@ -191,6 +191,8 @@ local function SetupUI()
 
 	buttonGrid.QuestsButton.MouseButton1Click:Connect(function()
 		DebugLog("Quests clicked")
+		local UIController = shared("UIController")
+		UIController:ToggleWindow("QuestsWindow")
 	end)
 
 	-- AFK button toggle - request toggle from server

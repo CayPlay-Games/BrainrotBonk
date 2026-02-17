@@ -33,6 +33,7 @@ local MapsConfig = shared("MapsConfig")
 local SkinService = shared("SkinService")
 local PickMapService = shared("PickMapService")
 local PhysicsService = shared("PhysicsService")
+local QuestService = shared("QuestService")
 
 -- Object References --
 local SubmitAimRemoteEvent = GetRemoteEvent("SubmitAim")
@@ -227,6 +228,20 @@ local function ResolveEliminatedBy(player, eliminatedBy)
 	end
 
 	return eliminatedBy
+end
+
+local function AwardEliminationQuestProgress(eliminatedBy)
+	local killerUserId = tonumber(eliminatedBy)
+	if not killerUserId then
+		return
+	end
+
+	local killerPlayer = Players:GetPlayerByUserId(killerUserId)
+	if not killerPlayer then
+		return
+	end
+
+	QuestService:IncrementProgressByKey(killerPlayer, "Eliminations", 1)
 end
 
 -- Creates a dummy player object for testing (DEBUG_MODE only)
@@ -1044,6 +1059,7 @@ function RoundService:EliminatePlayer(player, eliminatedBy)
 
 	UpdateDataStream()
 	RoundService.PlayerEliminated:Fire(player, eliminatedBy)
+	AwardEliminationQuestProgress(eliminatedBy)
 
 	-- Check if round should end (during active phases)
 	local activePhases = {
@@ -1186,12 +1202,18 @@ function RoundService:Init()
 
 	-- Award XP when round ends
 	self.RoundEnded:Connect(function(winner)
+		if winner and not (type(winner) == "table" and winner.IsDummy) then
+			QuestService:IncrementProgressByKey(winner, "RoundsWon", 1)
+		end
+
 		-- Award XP to all players who participated
 		for entity, data in pairs(_RoundPlayers) do
 			-- Skip dummies
 			if type(entity) == "table" and entity.IsDummy then
 				continue
 			end
+
+			QuestService:IncrementProgressByKey(entity, "RoundsPlayed", 1)
 
 			-- Award PlayGame XP for participating
 			RankService:AwardXP(entity, RankConfig.XPRewards.PlayGame)
