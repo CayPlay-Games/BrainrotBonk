@@ -11,6 +11,7 @@
 local SkinService = {}
 
 -- Roblox Services --
+local CollectionService = game:GetService("CollectionService")
 local ServerStorage = game:GetService("ServerStorage")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -54,7 +55,28 @@ local function CreatePhysicsBox(player, spawnCFrame)
 	physicsBox.Name = player.Name
 
 	-- Create the main physics body (box)
-	local rootPart = Instance.new("Part")
+	local rootPart
+
+	-- Check if a custom hitbox template is specified
+	if RoundConfig.PHYSICS_BOX_TEMPLATE then
+		local template = ServerStorage:FindFirstChild(RoundConfig.PHYSICS_BOX_TEMPLATE)
+		if template and template:IsA("BasePart") then
+			rootPart = template:Clone()
+			DebugLog("Using custom hitbox template:", RoundConfig.PHYSICS_BOX_TEMPLATE)
+		else
+			warn("[SkinService] Custom hitbox template not found in ServerStorage:", RoundConfig.PHYSICS_BOX_TEMPLATE)
+		end
+	end
+
+	-- Fallback to creating a new Part if no template or template not found
+	if not rootPart then
+		rootPart = Instance.new("Part")
+		rootPart.Material = Enum.Material.SmoothPlastic
+		rootPart.TopSurface = Enum.SurfaceType.Smooth
+		rootPart.BottomSurface = Enum.SurfaceType.Smooth
+	end
+
+	-- Apply standard properties from config (overrides template properties)
 	rootPart.Name = "HumanoidRootPart"
 	rootPart.Size = Vector3.new(
 		GetDebugPhysics("PHYSICS_BOX_SIZE_X") or 3.5,
@@ -62,9 +84,6 @@ local function CreatePhysicsBox(player, spawnCFrame)
 		GetDebugPhysics("PHYSICS_BOX_SIZE_Z") or 3.5
 	)
 	rootPart.Color = RoundConfig.PHYSICS_BOX_COLOR
-	rootPart.Material = Enum.Material.SmoothPlastic
-	rootPart.TopSurface = Enum.SurfaceType.Smooth
-	rootPart.BottomSurface = Enum.SurfaceType.Smooth
 	rootPart.CanCollide = true
 	rootPart.Anchored = false
 	rootPart.Transparency = 0.8
@@ -78,6 +97,14 @@ local function CreatePhysicsBox(player, spawnCFrame)
 		1, -- FrictionWeight (low, let floor friction dominate)
 		100 -- ElasticityWeight (high for consistent bounces)
 	)
+
+	-- Dampen rotation (resists slow drift but allows collision-based rotation)
+	local angularVelocity = Instance.new("AngularVelocity")
+	angularVelocity.Attachment0 = Instance.new("Attachment", rootPart)
+	angularVelocity.AngularVelocity = Vector3.zero
+	angularVelocity.MaxTorque = 5000
+	angularVelocity.RelativeTo = Enum.ActuatorRelativeTo.World
+	angularVelocity.Parent = rootPart
 
 	rootPart.Parent = physicsBox
 
@@ -222,6 +249,12 @@ function SkinService:AttachSkin(physicsBox, skinId, mutation)
 	-- Parent skin to physics box
 	skinModel.Name = "Skin"
 	skinModel.Parent = physicsBox
+
+	-- Store skinId as attribute for client-side animation lookup
+	skinModel:SetAttribute("SkinId", skinId)
+
+	-- Tag for client-side animation controller to detect
+	CollectionService:AddTag(skinModel, "Skin")
 
 	DebugLog("Attached skin", skinId, "to physics box")
 	return true
@@ -369,19 +402,9 @@ function SkinService:Init()
 		local stored = DataStream.Stored[player]
 		if not stored then return end
 
-		local collected = stored.Skins.Collected:Read() or {}
-		local ownsMutation = false
-		for _, entry in ipairs(collected) do
-			if entry.SkinId == skinId then
-				for _, ownedMutation in ipairs(entry.Mutations or { "Normal" }) do
-					if ownedMutation == mutation then
-						ownsMutation = true
-						break
-					end
-				end
-				break
-			end
-		end
+		local itemId = skinId .. "_" .. mutation
+		local ownedSkins = stored.Collections and stored.Collections.Skins and stored.Collections.Skins:Read() or {}
+		local ownsMutation = (ownedSkins[itemId] or 0) >= 1
 
 		if not ownsMutation then
 			DebugLog(player.Name, "tried to equip unowned skin+mutation:", skinId, mutation)

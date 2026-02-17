@@ -15,6 +15,7 @@ local MapsConfig = shared("MapsConfig")
 local MonetizationController = shared("MonetizationController")
 local ClientDataStream = shared("ClientDataStream")
 local GetRemoteEvent = shared("GetRemoteEvent")
+local PromiseWaitForDataStream = shared("PromiseWaitForDataStream")
 
 -- Remote Events/Functions --
 local SelectMapForPurchaseRemote = GetRemoteEvent("SelectMapForPurchase")
@@ -206,11 +207,9 @@ local function SetupUI(screenGui)
 
 	_IsSetup = true
 
-	-- Listen for queue changes (defer to ensure DataStream is ready)
-	task.defer(function()
-		task.wait(0.5)
-		local roundState = ClientDataStream.RoundState
-		if roundState and roundState.MapQueue then
+	-- Listen for queue changes
+	PromiseWaitForDataStream(ClientDataStream.RoundState):andThen(function(roundState)
+		if roundState.MapQueue then
 			roundState.MapQueue:Changed(function()
 				UpdateQueueDisplay()
 			end)

@@ -16,7 +16,24 @@ local AnalyticsService = game:GetService("AnalyticsService")
 local DataStream = shared("DataStream")
 local Collections = shared("Collections")
 local Promise = shared("Promise")
-local GroupRewardsService = shared("GroupRewardsService")
+
+-- Lazy-loaded to avoid circular dependencies
+local _GroupRewardsService = nil
+local _LeaderboardService = nil
+
+local function GetGroupRewardsService()
+	if not _GroupRewardsService then
+		_GroupRewardsService = shared("GroupRewardsService")
+	end
+	return _GroupRewardsService
+end
+
+local function GetLeaderboardService()
+	if not _LeaderboardService then
+		_LeaderboardService = shared("LeaderboardService")
+	end
+	return _LeaderboardService
+end
 
 -- Object References --
 
@@ -156,7 +173,7 @@ function CollectionsService:GiveCurrency(Player, CurrencyId, Amount, Transaction
 		end
 
 		-- Apply group membership multiplier
-		local multiplier = GroupRewardsService:GetCashMultiplier(Player)
+		local multiplier = GetGroupRewardsService():GetCashMultiplier(Player)
 		Amount = math.floor(Amount * multiplier)
 
 		local PlayerDataStream = DataStream.Stored[Player]
@@ -177,6 +194,11 @@ function CollectionsService:GiveCurrency(Player, CurrencyId, Amount, Transaction
 		local CurrenciesGainedDataStream = PlayerDataStream.Stats.CurrenciesGained
 		local CurrentValue = CurrenciesGainedDataStream[CurrencyId]:Read() or 0
 		CurrenciesGainedDataStream[CurrencyId] = CurrentValue + Amount
+
+		--// Leaderboard cash tracking
+		if CurrencyId == "Coins" then
+			GetLeaderboardService():AddCashEarned(Player, Amount)
+		end
 
 		return Resolve({
 			NewBalance = NewBalance,

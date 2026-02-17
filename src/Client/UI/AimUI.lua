@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 -- Dependencies --
 local ClientDataStream = shared("ClientDataStream")
 local RoundConfig = shared("RoundConfig")
+local PromiseWaitForDataStream = shared("PromiseWaitForDataStream")
 
 -- Object References --
 local LocalPlayer = Players.LocalPlayer
@@ -34,13 +35,17 @@ local _QButton = nil
 local _EButton = nil
 local _RenderConnection = nil
 local _IsVisible = false
+local _LockAimButton = nil
 
 -- Internal Functions --
+local function UpdateLockAimButtonVisual()
+	if not _LockAimButton then return end
 
-local function DebugLog(...)
-	if RoundConfig.DEBUG_LOG_STATE_CHANGES then
-		print("[AimUI]", ...)
-	end
+	local AimController = shared("AimController")
+	local isLocked = AimController and AimController:IsAimLocked() or false
+
+	_LockAimButton.Text = isLocked and "Locked!" or "Lock Aim?"
+	_LockAimButton.BackgroundColor3 = isLocked and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(129, 199, 0)
 end
 
 -- Checks if the local player is participating and alive in the current round
@@ -82,6 +87,7 @@ local function SetupUI()
 	-- Get Q/E button references and add click handlers
 	_QButton = container:FindFirstChild("QButton")
 	_EButton = container:FindFirstChild("EButton")
+	_LockAimButton = container:FindFirstChild("LockAim")
 
 	if _QButton then
 		_QButton.MouseButton1Click:Connect(function()
@@ -101,7 +107,14 @@ local function SetupUI()
 		end)
 	end
 
-	DebugLog("UI setup complete")
+	if _LockAimButton then
+		_LockAimButton.MouseButton1Click:Connect(function()
+			local AimController = shared("AimController")
+			if AimController and AimController:IsAiming() then
+				AimController:ToggleAimLock()
+			end
+		end)
+	end
 end
 
 local function UpdatePowerDisplay(power)
@@ -148,6 +161,9 @@ local function Show()
 	SetupUI()
 	_ScreenGui.Enabled = true
 
+	-- Reset lock button visual (aim starts unlocked)
+	UpdateLockAimButtonVisual()
+
 	-- Defensive: ensure old connection is cleaned up
 	if _RenderConnection then
 		_RenderConnection:Disconnect()
@@ -159,6 +175,7 @@ local function Show()
 		local AimController = shared("AimController")
 		if AimController and AimController:IsAiming() then
 			UpdatePowerDisplay(AimController:GetCurrentPower())
+			UpdateLockAimButtonVisual()
 		end
 	end)
 end
@@ -193,31 +210,24 @@ end
 
 -- Initializers --
 function AimUI:Init()
-	DebugLog("Initializing...")
-
 	-- Pre-setup the UI
 	SetupUI()
 
-	-- Listen for round state changes
-	task.defer(function()
-		task.wait(1) -- Wait for DataStream
-
-		local roundState = ClientDataStream.RoundState
-		if roundState then
-			roundState.State:Changed(function(newState, _oldState)
-				-- Only show during Aiming phase if player is alive in the round
-				if newState == "Aiming" and IsLocalPlayerInRound() then
-					Show()
-				else
-					-- Hide on any other state change (including elimination, round end, etc.)
-					Hide()
-				end
-			end)
-
-			-- Check current state (only if player is in the round)
-			if roundState.State:Read() == "Aiming" and IsLocalPlayerInRound() then
+	-- Wait for ClientDataStream.RoundState to be ready
+	PromiseWaitForDataStream(ClientDataStream.RoundState):andThen(function(roundState)
+		roundState.State:Changed(function(newState, _oldState)
+			-- Only show during Aiming phase if player is alive in the round
+			if newState == "Aiming" and IsLocalPlayerInRound() then
 				Show()
+			else
+				-- Hide on any other state change (including elimination, round end, etc.)
+				Hide()
 			end
+		end)
+
+		-- Check current state (only if player is in the round)
+		if roundState.State:Read() == "Aiming" and IsLocalPlayerInRound() then
+			Show()
 		end
 	end)
 end

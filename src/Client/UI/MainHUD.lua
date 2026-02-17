@@ -18,6 +18,7 @@ local ClientDataStream = shared("ClientDataStream")
 local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
 local RoundConfig = shared("RoundConfig")
 local GetRemoteEvent = shared("GetRemoteEvent")
+local PromiseWaitForDataStream = shared("PromiseWaitForDataStream")
 
 -- Remote Events --
 local ToggleAFKRemoteEvent = GetRemoteEvent("ToggleAFK")
@@ -300,9 +301,7 @@ function MainHUD:Init()
 	end)
 
 	-- Session and RoundState data (not Stored, use ClientDataStream directly)
-	task.defer(function()
-		task.wait(1)
-
+	PromiseWaitForDataStream(ClientDataStream.RoundState):andThen(function(roundState)
 		-- Listen for AFK status changes from DataStream
 		local sessionData = ClientDataStream.Session
 		if sessionData and sessionData.IsAFK then
@@ -315,28 +314,25 @@ function MainHUD:Init()
 			end)
 		end
 
-		local roundState = ClientDataStream.RoundState
-		if roundState then
-			UpdateStatus(roundState.State:Read(), roundState.RoundNumber:Read(), roundState.TimeRemaining:Read())
+		UpdateStatus(roundState.State:Read(), roundState.RoundNumber:Read(), roundState.TimeRemaining:Read())
 
-			roundState.State:Changed(function(newState)
-				UpdateStatus(newState, roundState.RoundNumber:Read(), roundState.TimeRemaining:Read())
-			end)
+		roundState.State:Changed(function(newState)
+			UpdateStatus(newState, roundState.RoundNumber:Read(), roundState.TimeRemaining:Read())
+		end)
 
-			roundState.RoundNumber:Changed(function(newRoundNumber)
-				UpdateStatus(roundState.State:Read(), newRoundNumber, roundState.TimeRemaining:Read())
-			end)
+		roundState.RoundNumber:Changed(function(newRoundNumber)
+			UpdateStatus(roundState.State:Read(), newRoundNumber, roundState.TimeRemaining:Read())
+		end)
 
-			roundState.TimeRemaining:Changed(function(newTimeRemaining)
-				UpdateStatus(roundState.State:Read(), roundState.RoundNumber:Read(), newTimeRemaining)
-			end)
+		roundState.TimeRemaining:Changed(function(newTimeRemaining)
+			UpdateStatus(roundState.State:Read(), roundState.RoundNumber:Read(), newTimeRemaining)
+		end)
 
-			-- Update buttons when players list changes (player joins/leaves round)
-			roundState.Players:Changed(function()
-				UpdateSpectateButtonVisibility(roundState.State:Read())
-				UpdateAFKButtonVisibility()
-			end)
-		end
+		-- Update buttons when players list changes (player joins/leaves round)
+		roundState.Players:Changed(function()
+			UpdateSpectateButtonVisibility(roundState.State:Read())
+			UpdateAFKButtonVisibility()
+		end)
 	end)
 end
 

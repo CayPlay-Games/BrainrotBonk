@@ -306,9 +306,11 @@ local function PopulateBoxes()
 	end
 	_BoxCards = {}
 
-	-- Create cards for each box
+	-- Create cards for each box (skip non-purchasable boxes)
 	for boxId, boxConfig in pairs(SkinBoxesConfig.Boxes) do
-		CreateBoxCard(boxId, boxConfig)
+		if not boxConfig.NotPurchasable then
+			CreateBoxCard(boxId, boxConfig)
+		end
 	end
 
 	DebugLog("Populated", #_BoxCards, "skin boxes")

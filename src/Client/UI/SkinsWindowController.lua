@@ -129,7 +129,7 @@ local function UpdateSkinCard(card, skinId, mutation)
 	local mutationConfig = SkinsConfig.Mutations[mutation]
 	local rarity = SkinsConfig.Rarities[skinConfig.Rarity]
 	if rarity then
-		card.BackgroundColor3 = rarity.Color
+		card.ImageColor3 = rarity.Color
 	end
 
 	-- Set name label (show mutation for non-Normal variants)
@@ -197,18 +197,24 @@ local function PopulateGrid()
 		return
 	end
 
-	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
+	-- Read from Collections.Skins
+	local ownedSkins = {}
+	if _PlayerStoredDataStream.Collections and _PlayerStoredDataStream.Collections.Skins then
+		ownedSkins = _PlayerStoredDataStream.Collections.Skins:Read() or {}
+	end
 	_EquippedSkinId = _PlayerStoredDataStream.Skins.Equipped:Read() or SkinsConfig.DEFAULT_SKIN
 	_EquippedMutation = _PlayerStoredDataStream.Skins.EquippedMutation:Read() or "Normal"
 
-	-- Build set of unlocked skin+mutation combos
-	-- Key: "skinId_mutation", Value: { SkinId, Mutation }
+	-- Build set of unlocked skin+mutation combos from Collections format
+	-- Collections format: { ["SkinId_Mutation"] = count }
 	local unlockedSet = {}
-	for _, entry in ipairs(collected) do
-		if SkinsConfig.Skins[entry.SkinId] then
-			for _, mutation in ipairs(entry.Mutations or { "Normal" }) do
-				local cardKey = GetCardKey(entry.SkinId, mutation)
-				unlockedSet[cardKey] = { SkinId = entry.SkinId, Mutation = mutation }
+	for itemId, count in pairs(ownedSkins) do
+		if count >= 1 then
+			-- Parse "SkinId_MutationId" format
+			local skinId, mutationId = string.match(itemId, "^(.+)_([^_]+)$")
+			if skinId and mutationId and SkinsConfig.Skins[skinId] then
+				local cardKey = GetCardKey(skinId, mutationId)
+				unlockedSet[cardKey] = { SkinId = skinId, Mutation = mutationId }
 			end
 		end
 	end
@@ -235,13 +241,14 @@ local function PopulateGrid()
 		local mutationA = SkinsConfig.Mutations[a.Mutation] or SkinsConfig.Mutations.Normal
 		local mutationB = SkinsConfig.Mutations[b.Mutation] or SkinsConfig.Mutations.Normal
 
-		-- Sort by mutation first (higher mutation sort order = rarer = first)
-		if mutationA.SortOrder ~= mutationB.SortOrder then
-			return mutationA.SortOrder > mutationB.SortOrder
-		end
-		-- Then by rarity (higher rarity first)
+		
+		-- Sort by rarity (higher rarity first)
 		if rarityA.SortOrder ~= rarityB.SortOrder then
 			return rarityA.SortOrder > rarityB.SortOrder
+		end
+		-- Then by mutation first (higher mutation sort order = rarer = first)
+		if mutationA.SortOrder ~= mutationB.SortOrder then
+			return mutationA.SortOrder > mutationB.SortOrder
 		end
 		-- Then alphabetically by skin name
 		return a.SkinId < b.SkinId
@@ -254,13 +261,9 @@ local function PopulateGrid()
 		if card then
 			-- Update existing card
 			UpdateSkinCard(card, combo.SkinId, combo.Mutation)
-			card.LayoutOrder = index
 		else
 			-- Create new card
 			card = CreateSkinCard(combo.SkinId, combo.Mutation)
-			if card then
-				card.LayoutOrder = index
-			end
 		end
 	end
 
@@ -357,9 +360,11 @@ function SkinsWindowController:Init()
 			end)
 
 			-- Listen for collection changes (new skins unlocked)
-			_PlayerStoredDataStream.Skins.Collected:Changed(function()
-				PopulateGrid()
-			end)
+			if _PlayerStoredDataStream.Collections and _PlayerStoredDataStream.Collections.Skins then
+				_PlayerStoredDataStream.Collections.Skins:Changed(function()
+					PopulateGrid()
+				end)
+			end
 
 			-- Initial population
 			PopulateGrid()
