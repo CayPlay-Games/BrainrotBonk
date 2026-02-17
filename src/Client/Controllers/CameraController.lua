@@ -15,6 +15,7 @@ local Players = game:GetService("Players")
 -- Dependencies --
 local ClientDataStream = shared("ClientDataStream")
 local RoundConfig = shared("RoundConfig")
+local PromiseWaitForDataStream = shared("PromiseWaitForDataStream")
 
 -- Object References --
 local LocalPlayer = Players.LocalPlayer
@@ -136,51 +137,46 @@ function CameraController:Init()
 	DebugLog("Initializing...")
 
 	-- Listen for round state changes
-	task.defer(function()
-		task.wait(1) -- Wait for DataStream
+	PromiseWaitForDataStream(ClientDataStream.RoundState):andThen(function(roundState)
+		local roundPhases = {
+			Spawning = true,
+			Aiming = true,
+			Revealing = true,
+			Launching = true,
+			Resolution = true,
+		}
 
-		local roundState = ClientDataStream.RoundState
-		if roundState then
-			local roundPhases = {
-				Spawning = true,
-				Aiming = true,
-				Revealing = true,
-				Launching = true,
-				Resolution = true,
-			}
+		-- Helper to check and start camera if conditions are met
+		local function TryStartRoundCamera()
+			local currentState = roundState.State:Read()
+			if not roundPhases[currentState] then return end
+			if not IsLocalPlayerInRound() then return end
 
-			-- Helper to check and start camera if conditions are met
-			local function TryStartRoundCamera()
-				local currentState = roundState.State:Read()
-				if not roundPhases[currentState] then return end
-				if not IsLocalPlayerInRound() then return end
-
-				if not _IsInRound then
-					StartRoundCamera()
-				elseif not _CameraSetupSuccessful then
-					-- Already in round but setup failed, retry
-					DebugLog("Retrying camera setup from TryStartRoundCamera")
-					SetupRoundCamera()
-				end
+			if not _IsInRound then
+				StartRoundCamera()
+			elseif not _CameraSetupSuccessful then
+				-- Already in round but setup failed, retry
+				DebugLog("Retrying camera setup from TryStartRoundCamera")
+				SetupRoundCamera()
 			end
-
-			roundState.State:Changed(function(newState)
-				-- Start camera when entering round phases (only if player is in the round)
-				if roundPhases[newState] and not _IsInRound and IsLocalPlayerInRound() then
-					StartRoundCamera()
-				elseif newState == "Waiting" or newState == "RoundEnd" then
-					StopRoundCamera()
-				end
-			end)
-
-			-- Also listen for Players changes (player might be added after state change)
-			roundState.Players:Changed(function()
-				TryStartRoundCamera()
-			end)
-
-			-- Check current state (only if player is in the round)
-			TryStartRoundCamera()
 		end
+
+		roundState.State:Changed(function(newState)
+			-- Start camera when entering round phases (only if player is in the round)
+			if roundPhases[newState] and not _IsInRound and IsLocalPlayerInRound() then
+				StartRoundCamera()
+			elseif newState == "Waiting" or newState == "RoundEnd" then
+				StopRoundCamera()
+			end
+		end)
+
+		-- Also listen for Players changes (player might be added after state change)
+		roundState.Players:Changed(function()
+			TryStartRoundCamera()
+		end)
+
+		-- Check current state (only if player is in the round)
+		TryStartRoundCamera()
 	end)
 
 	-- Handle character changes (respawns, physics box creation)

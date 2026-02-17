@@ -19,6 +19,7 @@ local ClientDataStream = shared("ClientDataStream")
 local UIController = shared("UIController")
 local RoundConfig = shared("RoundConfig")
 local SpectateController = shared("SpectateController")
+local PromiseWaitForDataStream = shared("PromiseWaitForDataStream")
 
 -- Object References --
 local LocalPlayer = Players.LocalPlayer
@@ -201,15 +202,7 @@ function SpectateWindowController:Init()
 	end)
 
 	-- Wait for ClientDataStream to be ready
-	task.defer(function()
-		task.wait(1)
-
-		local roundState = ClientDataStream.RoundState
-		if not roundState then
-			warn("[SpectateWindowController] RoundState not found")
-			return
-		end
-
+	PromiseWaitForDataStream(ClientDataStream.RoundState):andThen(function(roundState)
 		-- Listen for round state changes
 		_RoundStateConnection = roundState.State:Changed(function(newState)
 			-- Auto-stop spectating when round ends
