@@ -14,7 +14,6 @@ local SkinAnimationController = {}
 
 -- Roblox Services --
 local CollectionService = game:GetService("CollectionService")
-local KeyframeSequenceProvider = game:GetService("KeyframeSequenceProvider")
 
 -- Dependencies --
 local ClientDataStream = shared("ClientDataStream")
@@ -26,32 +25,12 @@ local ANIMATION_FADE_TIME = 0.2
 local SKIN_TAG = "Skin"
 
 -- Private Variables --
-local _RegisteredKeyframes = {} -- KeyframeSequence -> ContentId (cache)
 local _ActiveAnimations = {} -- Character -> { IdleTrack, WalkTrack, CurrentTrack }
 local _StateChangedConnection = nil
 local _SkinAddedConnection = nil
 local _SkinRemovedConnection = nil
 
 -- Internal Functions --
-
--- Converts a KeyframeSequence to a playable Animation content ID
-local function GetAnimationContentId(keyframeSequence)
-	if _RegisteredKeyframes[keyframeSequence] then
-		return _RegisteredKeyframes[keyframeSequence]
-	end
-
-	local contentId = KeyframeSequenceProvider:RegisterKeyframeSequence(keyframeSequence)
-	_RegisteredKeyframes[keyframeSequence] = contentId
-	return contentId
-end
-
--- Creates Animation instance from KeyframeSequence
-local function CreateAnimationFromKeyframes(keyframeSequence)
-	local contentId = GetAnimationContentId(keyframeSequence)
-	local animation = Instance.new("Animation")
-	animation.AnimationId = contentId
-	return animation
-end
 
 -- Plays the Idle animation
 local function PlayIdle(animData)
@@ -111,52 +90,6 @@ local function CreateAnimationsFromConfig(skinModel)
 	return idleAnim, walkAnim
 end
 
--- Creates Animation instances from AnimSaves KeyframeSequences (Studio only)
-local function CreateAnimationsFromAnimSaves(skinModel)
-	local animSaves = skinModel:FindFirstChild("AnimSaves")
-	if not animSaves then
-		return nil, nil
-	end
-
-	local idleKF = animSaves:FindFirstChild("Idle")
-	local walkKF = animSaves:FindFirstChild("Walk")
-
-	if not idleKF or not idleKF:IsA("KeyframeSequence") then
-		return nil, nil
-	end
-
-	if not walkKF or not walkKF:IsA("KeyframeSequence") then
-		return nil, nil
-	end
-
-	idleKF.Loop = true
-	walkKF.Loop = true
-
-	-- RegisterKeyframeSequence only works in Studio
-	local idleAnim, walkAnim
-	local success, result
-
-	success, result = pcall(function()
-		return CreateAnimationFromKeyframes(idleKF)
-	end)
-	if not success then
-		warn("[SkinAnimationController] Failed to create Idle animation from AnimSaves:", result)
-		return nil, nil
-	end
-	idleAnim = result
-
-	success, result = pcall(function()
-		return CreateAnimationFromKeyframes(walkKF)
-	end)
-	if not success then
-		warn("[SkinAnimationController] Failed to create Walk animation from AnimSaves:", result)
-		return nil, nil
-	end
-	walkAnim = result
-
-	return idleAnim, walkAnim
-end
-
 -- Sets up animation tracks for a skin model
 local function SetupSkinAnimations(skinModel)
 	local character = skinModel.Parent
@@ -184,12 +117,8 @@ local function SetupSkinAnimations(skinModel)
 		animator.Parent = animController
 	end
 
-	-- Try config asset IDs first (works in live games), then AnimSaves (Studio only)
+	-- Get animations from config asset IDs
 	local idleAnim, walkAnim = CreateAnimationsFromConfig(skinModel)
-	if not idleAnim or not walkAnim then
-		idleAnim, walkAnim = CreateAnimationsFromAnimSaves(skinModel)
-	end
-
 	if not idleAnim or not walkAnim then
 		local skinId = skinModel:GetAttribute("SkinId") or "unknown"
 		warn("[SkinAnimationController] No animations available for skin:", skinId)
