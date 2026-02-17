@@ -25,7 +25,7 @@ local GetPrizeWheelStatusRemote = GetRemoteFunction("GetPrizeWheelStatus")
 local RequestPrizeWheelSpinRemote = GetRemoteFunction("RequestPrizeWheelSpin")
 
 -- Constants --
-local FREE_SPIN_COOLDOWN_SECONDS = 24 * 60 * 60
+local FREE_SPIN_COOLDOWN_SECONDS = 60 * 10
 local BUY_ONE_SPIN_SKU = "PrizeWheelSpin1"
 local BUY_FIVE_SPINS_SKU = "PrizeWheelSpin5"
 
