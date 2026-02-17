@@ -157,13 +157,6 @@ local function _GetRewardIcon(reward)
 		return reward.Icon
 	end
 
-	if reward.Type == "Coins" then
-		return DailyRewardConfig.Icons and DailyRewardConfig.Icons.Coins or ""
-	end
-	if reward.Type == "Spins" then
-		return DailyRewardConfig.Icons and DailyRewardConfig.Icons.Spins or ""
-	end
-
 	return ""
 end
 
