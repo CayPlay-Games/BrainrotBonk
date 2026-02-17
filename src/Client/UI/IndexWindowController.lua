@@ -109,7 +109,10 @@ local function BuildCollectionLookup()
 		_CachedCollectionLookup[entry.SkinId] = {}
 		for _, mutation in ipairs(entry.Mutations) do
 			_CachedCollectionLookup[entry.SkinId][mutation] = true
-			_CachedMutationCounts[mutation] = _CachedMutationCounts[mutation] + 1
+			-- Only count mutations that exist in SkinsConfig
+			if _CachedMutationCounts[mutation] then
+				_CachedMutationCounts[mutation] = _CachedMutationCounts[mutation] + 1
+			end
 		end
 	end
 
