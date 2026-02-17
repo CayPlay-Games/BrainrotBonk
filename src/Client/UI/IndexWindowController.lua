@@ -14,7 +14,9 @@ local IndexWindowController = {}
 local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
 local UIController = shared("UIController")
 local SkinsConfig = shared("SkinsConfig")
+local TitlesConfig = shared("TitlesConfig")
 local RoundConfig = shared("RoundConfig")
+local GetRemoteEvent = shared("GetRemoteEvent")
 
 -- Private Variables --
 local _ScreenGui = nil
@@ -23,6 +25,14 @@ local _CardTemplate = nil
 local _IndexCards = {} -- { [skinId] = card }
 local _SelectedMutation = "Normal"
 local _SelectedTopTab = "Skins"
+
+-- Titles Variables
+local _SkinsContent = nil
+local _TitlesContent = nil
+local _TitlesGridArea = nil
+local _TitleCardTemplate = nil
+local _TitleCards = {} -- { [titleId] = card }
+local _EquipTitleRemoteEvent = nil
 
 -- UI References
 local _Header = nil
@@ -38,6 +48,16 @@ local _TopTabs = nil
 
 local _IsSetup = false
 local _PlayerStoredDataStream = nil
+
+-- Cached config counts (computed once on first use)
+local _CachedSkinCount = nil
+local _CachedMutationCount = nil
+local _CachedCollectionLookup = nil -- { [skinId] = { [mutation] = true } }
+local _CachedMutationCounts = nil -- { [mutation] = count }
+local _CachedSortedSkinIds = nil -- Pre-sorted skin IDs array
+
+-- Constants
+local LOCKED_COLOR = Color3.fromRGB(80, 80, 80)
 
 -- Sidebar tab configuration
 local SIDEBAR_TABS = {
@@ -55,6 +75,45 @@ local function DebugLog(...)
 	if RoundConfig.DEBUG_LOG_STATE_CHANGES then
 		print("[IndexWindowController]", ...)
 	end
+end
+
+-- Helper to safely get collected skins data
+local function GetCollectedData()
+	if _PlayerStoredDataStream and _PlayerStoredDataStream.Skins then
+		return _PlayerStoredDataStream.Skins.Collected:Read() or {}
+	end
+	return {}
+end
+
+-- Invalidates collection cache (call when collected data changes)
+local function InvalidateCollectionCache()
+	_CachedCollectionLookup = nil
+	_CachedMutationCounts = nil
+end
+
+-- Builds efficient lookup structures for collection data (lazy cached)
+local function BuildCollectionLookup()
+	if _CachedCollectionLookup then
+		return _CachedCollectionLookup, _CachedMutationCounts
+	end
+
+	_CachedCollectionLookup = {}
+	_CachedMutationCounts = {}
+
+	-- Initialize mutation counts
+	for mutation in pairs(SkinsConfig.Mutations) do
+		_CachedMutationCounts[mutation] = 0
+	end
+
+	for _, entry in ipairs(GetCollectedData()) do
+		_CachedCollectionLookup[entry.SkinId] = {}
+		for _, mutation in ipairs(entry.Mutations) do
+			_CachedCollectionLookup[entry.SkinId][mutation] = true
+			_CachedMutationCounts[mutation] = _CachedMutationCounts[mutation] + 1
+		end
+	end
+
+	return _CachedCollectionLookup, _CachedMutationCounts
 end
 
 -- Gets the icon for a skin from config
@@ -76,80 +135,75 @@ local function IsImageObject(instance)
 	return instance and (instance:IsA("ImageLabel") or instance:IsA("ImageButton"))
 end
 
--- Checks if a skin+mutation combo is collected
+-- Checks if a skin+mutation combo is collected (O(1) lookup)
 local function IsCollected(skinId, mutation)
-	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then
-		return false
-	end
-
-	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
-	for _, entry in ipairs(collected) do
-		if entry.SkinId == skinId then
-			return table.find(entry.Mutations, mutation) ~= nil
-		end
-	end
-	return false
+	local lookup = BuildCollectionLookup()
+	return lookup[skinId] and lookup[skinId][mutation] or false
 end
 
--- Gets count of collected skins for a specific mutation
+-- Gets count of collected skins for a specific mutation (O(1) lookup)
 local function GetCollectedMutationCount(mutation)
-	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then
-		return 0
-	end
+	local _, counts = BuildCollectionLookup()
+	return counts[mutation] or 0
+end
 
-	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
-	local count = 0
-	for _, entry in ipairs(collected) do
-		if table.find(entry.Mutations, mutation) then
-			count = count + 1
+-- Gets total number of skins defined in config (cached)
+local function GetTotalSkinCount()
+	if not _CachedSkinCount then
+		_CachedSkinCount = 0
+		for _ in pairs(SkinsConfig.Skins) do
+			_CachedSkinCount = _CachedSkinCount + 1
 		end
 	end
-	return count
+	return _CachedSkinCount
 end
 
--- Gets total number of distinct skins the player has collected (regardless of mutation)
-local function _GetPlayerSkinCount()
-	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then
-		return 0
+-- Gets total mutation count (cached)
+local function GetTotalMutationCount()
+	if not _CachedMutationCount then
+		_CachedMutationCount = 0
+		for _ in pairs(SkinsConfig.Mutations) do
+			_CachedMutationCount = _CachedMutationCount + 1
+		end
 	end
-
-	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
-	return #collected
+	return _CachedMutationCount
 end
 
--- Gets total number of skins defined in config
-local function GetTotalSkinCount()
-	local count = 0
-	for _ in pairs(SkinsConfig.Skins) do
-		count = count + 1
+-- Gets sorted skin IDs by rarity (cached, since SkinsConfig is static)
+local function GetSortedSkinIds()
+	if _CachedSortedSkinIds then
+		return _CachedSortedSkinIds
 	end
-	return count
+
+	_CachedSortedSkinIds = {}
+	for skinId in pairs(SkinsConfig.Skins) do
+		table.insert(_CachedSortedSkinIds, skinId)
+	end
+
+	table.sort(_CachedSortedSkinIds, function(a, b)
+		local configA = SkinsConfig.Skins[a]
+		local configB = SkinsConfig.Skins[b]
+		local rarityA = SkinsConfig.Rarities[configA.Rarity]
+		local rarityB = SkinsConfig.Rarities[configB.Rarity]
+
+		if rarityA.SortOrder ~= rarityB.SortOrder then
+			return rarityA.SortOrder > rarityB.SortOrder -- Higher rarity first
+		end
+		return a < b -- Alphabetical
+	end)
+
+	return _CachedSortedSkinIds
 end
 
 -- Gets total count of all possible skin+mutation combos (for header display)
 local function GetTotalPossibleCount()
-	local skinCount = 0
-	for _ in pairs(SkinsConfig.Skins) do
-		skinCount = skinCount + 1
-	end
-
-	local mutationCount = 0
-	for _ in pairs(SkinsConfig.Mutations) do
-		mutationCount = mutationCount + 1
-	end
-
-	return skinCount * mutationCount
+	return GetTotalSkinCount() * GetTotalMutationCount()
 end
 
 -- Gets total collected across all mutations (for header display)
 local function GetTotalCollectedCount()
-	if not _PlayerStoredDataStream or not _PlayerStoredDataStream.Skins then
-		return 0
-	end
-
-	local collected = _PlayerStoredDataStream.Skins.Collected:Read() or {}
 	local count = 0
-	for _, entry in ipairs(collected) do
+	for _, entry in ipairs(GetCollectedData()) do
 		count = count + #entry.Mutations
 	end
 	return count
@@ -178,23 +232,23 @@ local function ApplyLockedEffect(card)
 
 	local previewImage = FindPreviewImage(card)
 	if IsImageObject(previewImage) then
-		previewImage.ImageColor3 = Color3.fromRGB(80, 80, 80)
+		previewImage.ImageColor3 = LOCKED_COLOR
 	end
 
 	-- Gray out text labels
 	local itemName = card:FindFirstChild("ItemName")
 	if itemName then
-		itemName.TextColor3 = Color3.fromRGB(80, 80, 80)
+		itemName.TextColor3 = LOCKED_COLOR
 	end
 
 	local rarityLabel = card:FindFirstChild("RarityLabel")
 	if rarityLabel then
-		rarityLabel.TextColor3 = Color3.fromRGB(80, 80, 80)
+		rarityLabel.TextColor3 = LOCKED_COLOR
 	end
 
 	local defaultLabel = card:FindFirstChild("DefaultLabel")
 	if defaultLabel then
-		defaultLabel.TextColor3 = Color3.fromRGB(80, 80, 80)
+		defaultLabel.TextColor3 = LOCKED_COLOR
 	end
 end
 
@@ -314,25 +368,8 @@ local function PopulateGrid()
 	end
 	_IndexCards = {}
 
-	-- Get all skins and sort them
-	local sortedSkins = {}
-	for skinId in pairs(SkinsConfig.Skins) do
-		table.insert(sortedSkins, skinId)
-	end
-
-	table.sort(sortedSkins, function(a, b)
-		local configA = SkinsConfig.Skins[a]
-		local configB = SkinsConfig.Skins[b]
-		local rarityA = SkinsConfig.Rarities[configA.Rarity]
-		local rarityB = SkinsConfig.Rarities[configB.Rarity]
-
-		if rarityA.SortOrder ~= rarityB.SortOrder then
-			return rarityA.SortOrder > rarityB.SortOrder -- Higher rarity first
-		end
-		return a < b -- Alphabetical
-	end)
-
-	-- Create cards for each skin
+	-- Create cards for each skin (using cached sorted order)
+	local sortedSkins = GetSortedSkinIds()
 	for index, skinId in ipairs(sortedSkins) do
 		local card = CreateIndexCard(skinId)
 		if card then
@@ -377,24 +414,161 @@ local function SetupSidebarTabs()
 		return
 	end
 
-	DebugLog("Setting up sidebar tabs, Sidebar children:")
-	for _, child in _Sidebar:GetChildren() do
-		DebugLog("  -", child.Name, child.ClassName)
-	end
-
 	for _, tabInfo in ipairs(SIDEBAR_TABS) do
 		local tab = _Sidebar:FindFirstChild(tabInfo.name)
 		if tab then
-			DebugLog("Found tab:", tabInfo.name)
 			tab.MouseButton1Click:Connect(function()
 				OnMutationTabClicked(tabInfo.mutation)
 			end)
-		else
-			DebugLog("Tab not found:", tabInfo.name)
 		end
 	end
 
 	UpdateSidebarTabs()
+end
+
+-- Creates a title card for the titles grid
+local function CreateTitleCard(titleId, titleConfig, isEquipped, isUnlocked)
+	if not _TitleCardTemplate then
+		return nil
+	end
+
+	local card = _TitleCardTemplate:Clone()
+	card.Name = titleId
+	card.Visible = true
+
+	local lockedColor = Color3.fromRGB(138, 138, 138)
+
+	-- Set title label
+	local textContainer = card:FindFirstChild("TextContainer")
+	if textContainer then
+		local titleLabel = textContainer:FindFirstChild("TitleLabel")
+		if titleLabel then
+			titleLabel.Text = titleConfig.DisplayName
+			titleLabel.TextColor3 = isUnlocked and titleConfig.Color or lockedColor
+		end
+
+		local subtitleLabel = textContainer:FindFirstChild("SubtitleLabel")
+		if subtitleLabel then
+			subtitleLabel.Text = titleConfig.Description or ""
+		end
+	end
+
+	-- Apply locked color to the card frame if not unlocked
+	if not isUnlocked then
+		card.BackgroundColor3 = lockedColor
+	end
+
+	-- Configure equip button
+	local equipButton = card:FindFirstChild("EquipButton")
+	if equipButton then
+		if not isUnlocked then
+			equipButton.Text = "Locked"
+			equipButton.BackgroundColor3 = lockedColor
+		elseif isEquipped then
+			equipButton.Text = "Equipped"
+			equipButton.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
+		else
+			equipButton.Text = "Equip"
+			equipButton.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
+
+			-- Only connect handler for equippable (unlocked & not equipped) buttons
+			equipButton.MouseButton1Click:Connect(function()
+				if _EquipTitleRemoteEvent then
+					_EquipTitleRemoteEvent:FireServer(titleId)
+				end
+			end)
+		end
+	end
+
+	card.Parent = _TitlesGridArea
+	_TitleCards[titleId] = card
+
+	return card
+end
+
+-- Populates the titles grid with all titles
+local function PopulateTitlesGrid()
+	if not _TitleCardTemplate then
+		return
+	end
+
+	-- Clear existing cards
+	for _, card in pairs(_TitleCards) do
+		card:Destroy()
+	end
+	_TitleCards = {}
+
+	-- Get unlocked titles and equipped title from player data
+	local unlocked = {}
+	local equipped = nil
+	if _PlayerStoredDataStream and _PlayerStoredDataStream.Titles then
+		unlocked = _PlayerStoredDataStream.Titles.Unlocked:Read() or {}
+		equipped = _PlayerStoredDataStream.Titles.Equipped:Read()
+	end
+
+	-- Collect all titles and sort them (unlocked first, then locked)
+	local sortedTitles = {}
+	for titleId, titleConfig in pairs(TitlesConfig.Titles) do
+		local isUnlocked = table.find(unlocked, titleId) ~= nil
+		table.insert(sortedTitles, {
+			id = titleId,
+			config = titleConfig,
+			isUnlocked = isUnlocked,
+		})
+	end
+
+	table.sort(sortedTitles, function(a, b)
+		-- Unlocked (1) before locked (2)
+		local orderA = a.isUnlocked and 1 or 2
+		local orderB = b.isUnlocked and 1 or 2
+		if orderA ~= orderB then
+			return orderA < orderB
+		end
+		-- Alphabetical by display name within same unlock status
+		return a.config.DisplayName < b.config.DisplayName
+	end)
+
+	-- Create cards for all titles
+	for index, titleData in ipairs(sortedTitles) do
+		local isEquipped = equipped == titleData.id
+		local card = CreateTitleCard(titleData.id, titleData.config, isEquipped, titleData.isUnlocked)
+		if card then
+			card.LayoutOrder = index
+		end
+	end
+
+	DebugLog("Populated titles grid with", #sortedTitles, "titles")
+end
+
+-- Switches between Skins and Titles tabs
+local function SwitchToTab(tabName)
+	_SelectedTopTab = tabName
+
+	if tabName == "Skins" then
+		if _SkinsContent then
+			_SkinsContent.Visible = true
+		end
+		if _TitlesContent then
+			_TitlesContent.Visible = false
+		end
+		if _Sidebar then
+			_Sidebar.Visible = true
+		end
+		PopulateGrid()
+	elseif tabName == "Titles" then
+		if _SkinsContent then
+			_SkinsContent.Visible = false
+		end
+		if _TitlesContent then
+			_TitlesContent.Visible = true
+		end
+		if _Sidebar then
+			_Sidebar.Visible = false
+		end
+		PopulateTitlesGrid()
+	end
+
+	DebugLog("Selected top tab:", tabName)
 end
 
 -- Sets up top tabs (Skins/Titles)
@@ -408,17 +582,13 @@ local function SetupTopTabs()
 
 	if skinsTab then
 		skinsTab.MouseButton1Click:Connect(function()
-			_SelectedTopTab = "Skins"
-			-- TODO: Switch to skins view
-			DebugLog("Selected top tab: Skins")
+			SwitchToTab("Skins")
 		end)
 	end
 
 	if titlesTab then
 		titlesTab.MouseButton1Click:Connect(function()
-			_SelectedTopTab = "Titles"
-			-- TODO: Switch to titles view
-			DebugLog("Selected top tab: Titles")
+			SwitchToTab("Titles")
 		end)
 	end
 end
@@ -431,16 +601,10 @@ local function SetupUI(screenGui)
 
 	_ScreenGui = screenGui
 	local mainFrame = _ScreenGui:WaitForChild("MainFrame")
-	local content = mainFrame:WaitForChild("Content")
-
-	-- Debug: Log Content children
-	DebugLog("Content children:")
-	for _, child in content:GetChildren() do
-		DebugLog("  -", child.Name, child.ClassName)
-	end
+	local skinsContent = mainFrame:WaitForChild("SkinsContent")
 
 	-- Header references
-	_Header = content:FindFirstChild("Header")
+	_Header = skinsContent:FindFirstChild("Header")
 	if _Header then
 		_CountLabel = _Header:FindFirstChild("CountLabel")
 		_IndexTitle = _Header:FindFirstChild("IndexTitle")
@@ -451,14 +615,14 @@ local function SetupUI(screenGui)
 	_Sidebar = mainFrame:FindFirstChild("Sidebar")
 
 	-- Grid references
-	_GridArea = content:WaitForChild("GridArea")
+	_GridArea = skinsContent:WaitForChild("GridArea")
 	_CardTemplate = _GridArea:FindFirstChild("_Template")
 	if _CardTemplate then
 		_CardTemplate.Visible = false
 	end
 
 	-- Bottom bar references
-	_BottomBar = content:FindFirstChild("BottomBar")
+	_BottomBar = skinsContent:FindFirstChild("BottomBar")
 	if _BottomBar then
 		local progressBarBg = _BottomBar:FindFirstChild("ProgressBarBg")
 		if progressBarBg then
@@ -470,6 +634,30 @@ local function SetupUI(screenGui)
 
 	-- Top tabs references
 	_TopTabs = mainFrame:FindFirstChild("TopTabs")
+
+	-- Content area references (for tab switching)
+	_SkinsContent = mainFrame:FindFirstChild("SkinsContent")
+	_TitlesContent = mainFrame:FindFirstChild("TitlesContent")
+
+	-- Set default visibility (Skins visible, Titles hidden)
+	if _SkinsContent then
+		_SkinsContent.Visible = true
+	end
+
+	-- TitlesContent grid references
+	if _TitlesContent then
+		_TitlesGridArea = _TitlesContent:FindFirstChild("GridArea")
+		if _TitlesGridArea then
+			_TitleCardTemplate = _TitlesGridArea:FindFirstChild("_Template")
+			if _TitleCardTemplate then
+				_TitleCardTemplate.Visible = false
+			end
+		end
+		_TitlesContent.Visible = false -- Start with titles hidden
+	end
+
+	-- Initialize remote event for equipping titles
+	_EquipTitleRemoteEvent = GetRemoteEvent("EquipTitle")
 
 	-- Setup tab handlers
 	SetupSidebarTabs()
@@ -497,7 +685,21 @@ function IndexWindowController:Init()
 
 			-- Listen for collection changes
 			_PlayerStoredDataStream.Skins.Collected:Changed(function()
+				InvalidateCollectionCache()
 				PopulateGrid()
+			end)
+
+			-- Listen for title changes
+			_PlayerStoredDataStream.Titles.Equipped:Changed(function()
+				if _SelectedTopTab == "Titles" then
+					PopulateTitlesGrid()
+				end
+			end)
+
+			_PlayerStoredDataStream.Titles.Unlocked:Changed(function()
+				if _SelectedTopTab == "Titles" then
+					PopulateTitlesGrid()
+				end
 			end)
 
 			-- Initial population
