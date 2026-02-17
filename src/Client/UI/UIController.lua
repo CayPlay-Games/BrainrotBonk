@@ -267,6 +267,7 @@ function UIController:Init()
 	SetupWindow("RankWindow")
 	SetupWindow("SkinShopWindow")
 	SetupWindow("PrizeWheelWindow")
+	SetupWindow("QuestsWindow")
 end
 
 -- Return Module --
