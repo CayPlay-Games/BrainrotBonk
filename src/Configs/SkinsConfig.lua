@@ -641,6 +641,40 @@ local SkinsByRarity = {
 				Walk = "rbxassetid://100376783802964",
 			},
 		},
+		-- Leaderboard Champion Skins (exclusive rewards for top 3)
+		KillsChampion = {
+			DisplayName = "Kills Champion",
+			Description = "Awarded to top eliminators on the biweekly leaderboard",
+			Rarity = Rarities.Secret.Name,
+			ModelName = "KillsChampion", -- TODO: Add model to ServerStorage/Skins
+			Icon = "rbxassetid://0", -- TODO: Replace with actual icon
+			-- KeyframeSequences = {
+			-- 	Idle = "rbxassetid://0",
+			-- 	Walk = "rbxassetid://0",
+			-- },
+		},
+		RoundsChampion = {
+			DisplayName = "Rounds Champion",
+			Description = "Awarded to most dedicated players on the biweekly leaderboard",
+			Rarity = Rarities.Secret.Name,
+			ModelName = "RoundsChampion", -- TODO: Add model to ServerStorage/Skins
+			Icon = "rbxassetid://0", -- TODO: Replace with actual icon
+			-- KeyframeSequences = {
+			-- 	Idle = "rbxassetid://0",
+			-- 	Walk = "rbxassetid://0",
+			-- },
+		},
+		CashChampion = {
+			DisplayName = "Cash Champion",
+			Description = "Awarded to top earners on the biweekly leaderboard",
+			Rarity = Rarities.Secret.Name,
+			ModelName = "CashChampion", -- TODO: Add model to ServerStorage/Skins
+			Icon = "rbxassetid://0", -- TODO: Replace with actual icon
+			-- KeyframeSequences = {
+			-- 	Idle = "rbxassetid://0",
+			-- 	Walk = "rbxassetid://0",
+			-- },
+		},
 	}
 }
 

@@ -17,6 +17,7 @@ local DataStream = shared("DataStream")
 local Collections = shared("Collections")
 local Promise = shared("Promise")
 local GroupRewardsService = shared("GroupRewardsService")
+local LeaderboardService = shared("LeaderboardService")
 
 -- Object References --
 
@@ -177,6 +178,11 @@ function CollectionsService:GiveCurrency(Player, CurrencyId, Amount, Transaction
 		local CurrenciesGainedDataStream = PlayerDataStream.Stats.CurrenciesGained
 		local CurrentValue = CurrenciesGainedDataStream[CurrencyId]:Read() or 0
 		CurrenciesGainedDataStream[CurrencyId] = CurrentValue + Amount
+
+		--// Leaderboard cash tracking
+		if CurrencyId == "Coins" then
+			LeaderboardService:AddCashEarned(Player, Amount)
+		end
 
 		return Resolve({
 			NewBalance = NewBalance,

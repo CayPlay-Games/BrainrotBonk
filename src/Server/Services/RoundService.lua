@@ -33,6 +33,7 @@ local MapsConfig = shared("MapsConfig")
 local SkinService = shared("SkinService")
 local PickMapService = shared("PickMapService")
 local PhysicsService = shared("PhysicsService")
+local LeaderboardService = shared("LeaderboardService")
 
 -- Object References --
 local SubmitAimRemoteEvent = GetRemoteEvent("SubmitAim")
@@ -1045,6 +1046,16 @@ function RoundService:EliminatePlayer(player, eliminatedBy)
 	UpdateDataStream()
 	RoundService.PlayerEliminated:Fire(player, eliminatedBy)
 
+	-- Award kill to eliminator (ONLY player-caused eliminations)
+	-- Excludes: "Slip", "Death", "Fall", "Disconnect" - only counts when another player bumped them
+	if eliminatedBy and tonumber(eliminatedBy) then
+		local eliminatorId = tonumber(eliminatedBy)
+		local eliminator = Players:GetPlayerByUserId(eliminatorId)
+		if eliminator and eliminator ~= player then
+			LeaderboardService:IncrementKills(eliminator, 1)
+		end
+	end
+
 	-- Check if round should end (during active phases)
 	local activePhases = {
 		[States.Aiming] = true,
@@ -1184,7 +1195,7 @@ function RoundService:Init()
 		end)
 	end
 
-	-- Award XP when round ends
+	-- Award XP and track rounds when round ends
 	self.RoundEnded:Connect(function(winner)
 		-- Award XP to all players who participated
 		for entity, data in pairs(_RoundPlayers) do
@@ -1195,6 +1206,9 @@ function RoundService:Init()
 
 			-- Award PlayGame XP for participating
 			RankService:AwardXP(entity, RankConfig.XPRewards.PlayGame)
+
+			-- Track rounds played for leaderboard
+			LeaderboardService:IncrementRoundsPlayed(entity, 1)
 
 			-- Award placement XP
 			local placement = data.PlacementPosition
