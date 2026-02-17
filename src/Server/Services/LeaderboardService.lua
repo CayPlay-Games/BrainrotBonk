@@ -93,12 +93,23 @@ local function GetDisplayName(userId)
 	if _NameCache[userId] then
 		return _NameCache[userId]
 	end
+
+	if not userId or type(userId) ~= "number" then
+		return "Unknown"
+	end
+
 	local success, name = pcall(function()
 		return Players:GetNameFromUserIdAsync(userId)
 	end)
-	local displayName = success and ("@" .. name) or "Unknown"
-	_NameCache[userId] = displayName
-	return displayName
+
+	if success and name then
+		local displayName = "@" .. name
+		_NameCache[userId] = displayName
+		return displayName
+	end
+
+	-- Don't cache failures - allow retry on next refresh
+	return "Unknown"
 end
 
 local function FindSurfaceGui(instance)
@@ -138,6 +149,12 @@ end
 -- Update OrderedDataStore entry (debounced)
 local function QueueDataStoreUpdate(player, category, value)
 	local userId = player.UserId
+
+	-- Reject invalid userIds (e.g., -1 from dummy players)
+	if not userId or userId < 1 then
+		return
+	end
+
 	local now = tick()
 
 	_LastUpdateTime[userId] = _LastUpdateTime[userId] or {}
@@ -274,13 +291,20 @@ function LeaderboardService:GetTop(category, count, periodId)
 	local currentPage = pages:GetCurrentPage()
 	local results = {}
 
-	for rank, entry in ipairs(currentPage) do
-		table.insert(results, {
-			Rank = rank,
-			UserId = tonumber(entry.key),
-			Value = entry.value,
-			FormattedValue = FormatHelper:FormatNumber(entry.value),
-		})
+	local validRank = 0
+	for _, entry in ipairs(currentPage) do
+		local odUserId = tonumber(entry.key)
+
+		-- Skip invalid userIds
+		if odUserId and odUserId >= 1 then
+			validRank = validRank + 1
+			table.insert(results, {
+				Rank = validRank,
+				UserId = odUserId,
+				Value = entry.value,
+				FormattedValue = FormatHelper:FormatNumber(entry.value),
+			})
+		end
 	end
 
 	-- Cache results
