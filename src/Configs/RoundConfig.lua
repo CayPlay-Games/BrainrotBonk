@@ -19,7 +19,7 @@ return TableHelper:DeepFreeze({
 
 	-- Player requirements
 	MIN_PLAYERS_TO_START = 2,
-	MAX_PLAYERS_PER_ROUND = 12,
+	MAX_PLAYERS_PER_ROUND = 11,
 
 	-- Phase durations (seconds)
 	Timers = {

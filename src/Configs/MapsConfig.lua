@@ -13,20 +13,14 @@ return TableHelper:DeepFreeze({
 	Maps = {
 		ElectroTub = {
 			DisplayName = "Electro Tub",
-			MinPlayers = 4,
-			MaxPlayers = 12,
 			GameMode = "Classic",
 		},
 		Castle = {
 			DisplayName = "Castle",
-			MinPlayers = 4,
-			MaxPlayers = 12,
 			GameMode = "DeathMatch",
 		},
 		Volcano = {
 			DisplayName = "Volcano",
-			MinPlayers = 4,
-			MaxPlayers = 12,
 			GameMode = "DeathMatch",
 			Modifier = {
 				Id = "MeteorShower",
@@ -35,15 +29,23 @@ return TableHelper:DeepFreeze({
 		},
 		SaladSpinner = {
 			DisplayName = "Salad Spinner",
-			MinPlayers = 4,
-			MaxPlayers = 12,
 			GameMode = "DeathMatch",
 		},
 		SoupPot = {
 			DisplayName = "Soup Pot",
-			MinPlayers = 4,
-			MaxPlayers = 12,
 			GameMode = "DeathMatch",
+		},
+		IcyMountains = {
+			DisplayName = "Icy Mountains",
+			GameMode = "Classic",
+		},
+		TrafficJam = {
+			DisplayName = "Traffic Jam",
+			GameMode = "Classic",
+		},
+		JungleTemple = {
+			DisplayName = "Jungle Temple",
+			GameMode = "Classic",
 		},
 	},
 
