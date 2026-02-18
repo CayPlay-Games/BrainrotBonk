@@ -10,7 +10,7 @@ local TableHelper = shared("TableHelper")
 
 return TableHelper:DeepFreeze({
 	-- Debug settings
-	DEBUG_MODE = false, -- Allow starting with 1 player instead of MIN_PLAYERS_TO_START
+	DEBUG_MODE = true, -- Allow starting with 1 player instead of MIN_PLAYERS_TO_START
 	DEBUG_SKIP_MAP_LOADING = false, -- Use default test map
 	DEBUG_LOG_STATE_CHANGES = true, -- Print state transitions to output
 
@@ -23,9 +23,11 @@ return TableHelper:DeepFreeze({
 		WAITING_COUNTDOWN = 15, -- Time after min players reached before starting
 		MAP_LOADING_TIMEOUT = 10, -- Max time to wait for map load
 		SPAWNING_DURATION = 5,
+		MODIFIER_SETUP_DURATION = 3, -- Warning phase before effects
 		AIMING_DURATION = 5,
 		REVEALING_DURATION = 2,
 		LAUNCHING_DURATION = 0.5, -- Brief delay after applying forces
+		MODIFIER_RESOLUTION_DURATION = 2, -- Effect execution phase
 		RESOLUTION_TIMEOUT = 10, -- Max time waiting for physics to settle
 		ROUND_END_DURATION = 5,
 		INTERMISSION_DURATION = 5,

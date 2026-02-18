@@ -11,12 +11,6 @@ local TableHelper = shared("TableHelper")
 return TableHelper:DeepFreeze({
 	-- Map definitions
 	Maps = {
-		Blender = {
-			DisplayName = "Blender",
-			MinPlayers = 4,
-			MaxPlayers = 12,
-			GameMode = "Classic",
-		},
 		ElectroTub = {
 			DisplayName = "Electro Tub",
 			MinPlayers = 4,
@@ -33,7 +27,17 @@ return TableHelper:DeepFreeze({
 			DisplayName = "Volcano",
 			MinPlayers = 4,
 			MaxPlayers = 12,
-			GameMode = "Classic",
+			GameMode = "DeathMatch",
+			Modifier = {
+				Id = "MeteorShower",
+				Chance = 1.0, -- 100% chance for testing, adjust later
+			},
+		},
+		SaladSpinner = {
+			DisplayName = "Salad Spinner",
+			MinPlayers = 4,
+			MaxPlayers = 12,
+			GameMode = "DeathMatch",
 		},
 		SoupPot = {
 			DisplayName = "Soup Pot",

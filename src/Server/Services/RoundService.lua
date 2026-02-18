@@ -6,11 +6,11 @@
 		Implements a state machine controlling all phases of gameplay.
 
 	States:
-		Waiting -> MapLoading -> Spawning -> Aiming -> Revealing -> Launching -> Resolution
-		                                        ^                                    |
-		                                        +-------- (if >1 alive) ------------+
-		                                                       |
-		                                        (if <=1 alive) -> RoundEnd -> Waiting
+		Waiting -> MapLoading -> Spawning -> ModifierSetup -> Aiming -> Revealing -> Launching -> Resolution -> ModifierResolution
+		                                          ^                                                                         |
+		                                          +--------------------------- (if >1 alive) ------------------------------+
+		                                                                              |
+		                                                           (if <=1 alive) -> RoundEnd -> Waiting
 --]]
 
 -- Root --
@@ -35,6 +35,7 @@ local PickMapService = shared("PickMapService")
 local PhysicsService = shared("PhysicsService")
 local QuestService = shared("QuestService")
 local LeaderboardService = shared("LeaderboardService")
+local ModifierService = shared("ModifierService")
 
 -- Object References --
 local SubmitAimRemoteEvent = GetRemoteEvent("SubmitAim")
@@ -46,9 +47,11 @@ local States = {
 	Waiting = "Waiting",
 	MapLoading = "MapLoading",
 	Spawning = "Spawning",
+	ModifierSetup = "ModifierSetup",
 	Aiming = "Aiming",
 	Revealing = "Revealing",
 	Launching = "Launching",
+	ModifierResolution = "ModifierResolution",
 	Resolution = "Resolution",
 	RoundEnd = "RoundEnd",
 }
@@ -557,6 +560,11 @@ local function EnterSpawning()
 	-- Start at round 1
 	_RoundNumber = 1
 
+	-- Initialize modifier for this map
+	local currentMapId = MapService:GetCurrentMapId()
+	local currentMapInstance = MapService:GetCurrentMapInstance()
+	ModifierService:OnMapLoaded(currentMapId, currentMapInstance)
+
 	-- Get all non-AFK players to include in round
 	local allPlayers = {}
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -636,10 +644,27 @@ local function EnterSpawning()
 
 	UpdateDataStream()
 
-	-- Brief delay then move to aiming
+	-- Brief delay then move to modifier setup
 	StartTimer(RoundConfig.Timers.SPAWNING_DURATION, function()
-		TransitionTo(States.Aiming)
+		TransitionTo(States.ModifierSetup)
 	end)
+end
+
+local function EnterModifierSetup()
+	DebugLog("Entering ModifierSetup state")
+
+	-- Roll for modifier this round
+	local shouldActivate = ModifierService:RollForModifier()
+
+	if shouldActivate then
+		ModifierService:ExecuteSetup()
+		StartTimer(RoundConfig.Timers.MODIFIER_SETUP_DURATION, function()
+			TransitionTo(States.Aiming)
+		end)
+	else
+		-- No modifier or roll failed, skip to Aiming immediately
+		TransitionTo(States.Aiming)
+	end
 end
 
 local function EnterAiming()
@@ -793,10 +818,44 @@ local function EnterLaunching()
 		end
 	end
 
-	-- Brief delay then check resolution
+	-- Brief delay then check resolution (players settle first)
 	StartTimer(RoundConfig.Timers.LAUNCHING_DURATION, function()
 		TransitionTo(States.Resolution)
 	end)
+end
+
+local function EnterModifierResolution()
+	DebugLog("Entering ModifierResolution state")
+
+	if ModifierService:IsActiveThisRound() then
+		-- ExecuteResolve returns the duration needed for the modifier to complete
+		local resolveDuration = ModifierService:ExecuteResolve()
+		DebugLog("Modifier resolve duration:", resolveDuration, "seconds")
+
+		-- Wait for modifier effects to complete, then check win condition
+		StartTimer(resolveDuration, function()
+			-- Check win condition after modifier effects
+			local aliveCount = GetAliveCount()
+			if aliveCount <= 1 then
+				TransitionTo(States.RoundEnd)
+			else
+				-- More players alive, continue to next round
+				_RoundNumber = _RoundNumber + 1
+				ModifierService:OnRoundEnd()
+				TransitionTo(States.ModifierSetup)
+			end
+		end)
+	else
+		-- No modifier active, check win condition immediately
+		local aliveCount = GetAliveCount()
+		if aliveCount <= 1 then
+			TransitionTo(States.RoundEnd)
+		else
+			_RoundNumber = _RoundNumber + 1
+			ModifierService:OnRoundEnd()
+			TransitionTo(States.ModifierSetup)
+		end
+	end
 end
 
 local function EnterResolution()
@@ -864,17 +923,17 @@ local function EnterResolution()
 			end
 		end
 
-		-- If settled or timeout, go back to aiming or end round
+		-- If settled or timeout, go to modifier resolution (handles win check)
 		if allSettled or elapsed > RoundConfig.Timers.RESOLUTION_TIMEOUT then
 			checkConnection:Disconnect()
 			PhysicsService:ClearAll()
 
+			-- Check if round ended during resolution (all eliminated)
 			if aliveCount <= 1 then
 				TransitionTo(States.RoundEnd)
 			else
-				-- Increment round number for next aiming phase
-				_RoundNumber = _RoundNumber + 1
-				TransitionTo(States.Aiming)
+				-- Players settled, now execute modifier effects
+				TransitionTo(States.ModifierResolution)
 			end
 		end
 	end)
@@ -882,6 +941,9 @@ end
 
 local function EnterRoundEnd()
 	DebugLog("Entering RoundEnd state")
+
+	-- Cleanup modifier for round end
+	ModifierService:OnRoundEnd()
 
 	-- Clear all physics registrations
 	PhysicsService:ClearAll()
@@ -920,6 +982,9 @@ local function EnterRoundEnd()
 
 	-- After round end duration, go back to waiting
 	StartTimer(RoundConfig.Timers.ROUND_END_DURATION, function()
+		-- Cleanup modifier before map unload
+		ModifierService:OnMapUnload()
+
 		-- Unload the current map
 		MapService:UnloadCurrentMap()
 		_CurrentSpawnPoints = {}
@@ -951,9 +1016,11 @@ local StateEntryFunctions = {
 	[States.Waiting] = EnterWaiting,
 	[States.MapLoading] = EnterMapLoading,
 	[States.Spawning] = EnterSpawning,
+	[States.ModifierSetup] = EnterModifierSetup,
 	[States.Aiming] = EnterAiming,
 	[States.Revealing] = EnterRevealing,
 	[States.Launching] = EnterLaunching,
+	[States.ModifierResolution] = EnterModifierResolution,
 	[States.Resolution] = EnterResolution,
 	[States.RoundEnd] = EnterRoundEnd,
 }
@@ -1074,9 +1141,11 @@ function RoundService:EliminatePlayer(player, eliminatedBy)
 
 	-- Check if round should end (during active phases)
 	local activePhases = {
+		[States.ModifierSetup] = true,
 		[States.Aiming] = true,
 		[States.Revealing] = true,
 		[States.Launching] = true,
+		[States.ModifierResolution] = true,
 		[States.Resolution] = true,
 	}
 

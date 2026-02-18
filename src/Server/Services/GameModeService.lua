@@ -144,14 +144,13 @@ function GameModeService:Init()
 			end
 		end
 
-		-- Track round transitions (Resolution -> Aiming means between rounds)
-		if newState == "Aiming" and oldState == "Resolution" then
-			-- This is between rounds - invoke OnRoundEnd for previous round
+		-- Track round transitions (ModifierResolution only occurs between rounds)
+		if newState == "ModifierResolution" then
+			-- Round ended - invoke OnRoundEnd for previous round
 			InvokeHook("OnRoundEnd", _RoundNumber)
 			_RoundNumber = _RoundNumber + 1
-			InvokeHook("OnRoundStart", _RoundNumber)
-		elseif newState == "Aiming" and oldState == "Spawning" then
-			-- First round start
+		elseif newState == "Aiming" then
+			-- Round starting (first round and subsequent rounds)
 			InvokeHook("OnRoundStart", _RoundNumber)
 		end
 
