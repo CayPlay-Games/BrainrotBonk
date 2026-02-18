@@ -79,7 +79,11 @@ end
 
 -- Helper to safely get collected skins data from Collections
 local function GetCollectedSkinsData()
-	if _PlayerStoredDataStream and _PlayerStoredDataStream.Collections and _PlayerStoredDataStream.Collections.Skins then
+	if
+		_PlayerStoredDataStream
+		and _PlayerStoredDataStream.Collections
+		and _PlayerStoredDataStream.Collections.Skins
+	then
 		return _PlayerStoredDataStream.Collections.Skins:Read() or {}
 	end
 	return {}
@@ -405,9 +409,9 @@ local function UpdateSidebarTabs()
 		if tab then
 			-- Visual feedback for selected tab
 			if tabInfo.mutation == _SelectedMutation then
-				tab.BackgroundTransparency = 0
+				tab.ImageColor3 = Color3.fromRGB(255, 255, 255)
 			else
-				tab.BackgroundTransparency = 0.3
+				tab.ImageColor3 = Color3.fromRGB(150, 150, 150)
 			end
 		end
 	end
