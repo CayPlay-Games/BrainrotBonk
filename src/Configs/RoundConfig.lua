@@ -6,11 +6,14 @@
 		and debug settings.
 --]]
 
+local RunService = game:GetService("RunService")
 local TableHelper = shared("TableHelper")
+
+local isStudio = RunService:IsStudio()
 
 return TableHelper:DeepFreeze({
 	-- Debug settings
-	DEBUG_MODE = true, -- Allow starting with 1 player instead of MIN_PLAYERS_TO_START
+	DEBUG_MODE = isStudio and true, -- Allow starting with 1 player instead of MIN_PLAYERS_TO_START (only in Studio)
 	DEBUG_SKIP_MAP_LOADING = false, -- Use default test map
 	DEBUG_LOG_STATE_CHANGES = true, -- Print state transitions to output
 
