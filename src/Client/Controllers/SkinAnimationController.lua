@@ -163,15 +163,12 @@ end
 local function OnSkinAdded(skinModel)
 	-- Spawn task since SetupSkinAnimations uses WaitForChild
 	task.spawn(function()
-		warn("[SkinAnimationController] Skin tag detected:", skinModel:GetFullName())
 
 		local animData = SetupSkinAnimations(skinModel)
 		if not animData then
 			warn("[SkinAnimationController] Failed to setup animations for:", skinModel:GetFullName())
 			return
 		end
-
-		warn("[SkinAnimationController] Animations setup successfully")
 
 		-- Play appropriate animation based on current state
 		local roundState = ClientDataStream.RoundState
@@ -181,7 +178,6 @@ local function OnSkinAdded(skinModel)
 		end
 
 		local currentState = roundState.State:Read()
-		warn("[SkinAnimationController] Current state:", currentState)
 		if currentState == "Launching" or currentState == "Resolution" then
 			PlayWalk(animData)
 		elseif currentState == "Spawning" or currentState == "Aiming" or currentState == "Revealing" then
