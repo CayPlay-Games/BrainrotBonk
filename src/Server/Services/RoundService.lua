@@ -83,6 +83,8 @@ local _NextDummyId = 1
 local _DummySpawnDirections = {}
 -- Map loaded during countdown (for seamless transition)
 local _MapLoadedDuringCountdown = false
+-- Players eliminated during current resolution phase (for tie detection)
+local _EliminatedThisResolution = {}
 
 -- Public Variables / Signals --
 RoundService.StateChanged = Signal.new() -- (newState, oldState)
@@ -788,6 +790,9 @@ end
 local function EnterLaunching()
 	DebugLog("Entering Launching state")
 
+	-- Clear elimination tracking for this turn (Launching + Resolution + ModifierResolution)
+	_EliminatedThisResolution = {}
+
 	-- Clear revealed aims from DataStream
 	DataStream.RoundState.RevealedAims = {}
 
@@ -868,6 +873,15 @@ local function EnterResolution()
 	-- Track last frame time for frame-rate independent decay
 	local lastFrameTime = tick()
 
+	-- Check immediately if all players are already eliminated
+	local initialAliveCount = GetAliveCount()
+	if initialAliveCount == 0 then
+		DebugLog("All players eliminated at resolution start")
+		PhysicsService:ClearAll()
+		TransitionTo(States.RoundEnd)
+		return
+	end
+
 	-- Monitor until players settle or timeout
 	local checkConnection
 	checkConnection = RunService.Heartbeat:Connect(function()
@@ -883,9 +897,9 @@ local function EnterResolution()
 
 		local elapsed = currentTime - resolutionStartTime
 
-		-- Check win condition
+		-- Only immediately end if ALL players are eliminated (no one left to wait for)
 		local aliveCount = GetAliveCount()
-		if aliveCount <= 1 then
+		if aliveCount == 0 then
 			checkConnection:Disconnect()
 			PhysicsService:ClearAll()
 			TransitionTo(States.RoundEnd)
@@ -923,13 +937,14 @@ local function EnterResolution()
 			end
 		end
 
-		-- If settled or timeout, go to modifier resolution (handles win check)
+		-- If settled or timeout, check win condition and proceed
 		if allSettled or elapsed > RoundConfig.Timers.RESOLUTION_TIMEOUT then
 			checkConnection:Disconnect()
 			PhysicsService:ClearAll()
 
-			-- Check if round ended during resolution (all eliminated)
-			if aliveCount <= 1 then
+			-- Recheck alive count after all movement settled
+			local finalAliveCount = GetAliveCount()
+			if finalAliveCount <= 1 then
 				TransitionTo(States.RoundEnd)
 			else
 				-- Players settled, now execute modifier effects
@@ -958,7 +973,13 @@ local function EnterRoundEnd()
 		break
 	end
 
-	-- Update winner in DataStream
+	-- Count players eliminated during the final resolution phase
+	local eliminatedThisResolutionCount = 0
+	for _ in pairs(_EliminatedThisResolution) do
+		eliminatedThisResolutionCount = eliminatedThisResolutionCount + 1
+	end
+
+	-- Update winner in DataStream and handle placements
 	if winner then
 		DataStream.RoundState.Winner = {
 			UserId = winner.UserId,
@@ -970,10 +991,36 @@ local function EnterRoundEnd()
 			_RoundPlayers[winner].PlacementPosition = 1
 		end
 
+		-- Players eliminated this resolution all get 2nd place (they died together leaving the winner)
+		for player in pairs(_EliminatedThisResolution) do
+			if _RoundPlayers[player] then
+				_RoundPlayers[player].PlacementPosition = 2
+			end
+		end
+
 		DebugLog("Winner:", winner.DisplayName)
 	else
-		DebugLog("No winner (all eliminated)")
+		-- No winner - all remaining players were eliminated together
+		-- Apply tie placement rules
+		DebugLog("No winner (all eliminated) - eliminated this resolution:", eliminatedThisResolutionCount)
+
+		local tiePlacement = nil
+		if eliminatedThisResolutionCount == 2 then
+			tiePlacement = 2 -- Both get 2nd place XP
+		elseif eliminatedThisResolutionCount == 3 then
+			tiePlacement = 3 -- All get 3rd place XP
+		end
+		-- 4+ players: tiePlacement stays nil (no placement XP)
+
+		for player in pairs(_EliminatedThisResolution) do
+			if _RoundPlayers[player] then
+				_RoundPlayers[player].PlacementPosition = tiePlacement
+			end
+		end
 	end
+
+	-- Clear elimination tracking
+	_EliminatedThisResolution = {}
 
 	UpdateDataStream()
 	RoundService.RoundEnded:Fire(winner)
@@ -1115,7 +1162,22 @@ function RoundService:EliminatePlayer(player, eliminatedBy)
 	if _RoundPlayers[player] then
 		_RoundPlayers[player].IsAlive = false
 		_RoundPlayers[player].EliminatedBy = eliminatedBy
-		_RoundPlayers[player].PlacementPosition = GetAliveCount() + 1
+
+		-- Track elimination for tie detection during resolution phases
+		-- Placement will be calculated in EnterRoundEnd for tie handling
+		local resolutionPhases = {
+			[States.Launching] = true,
+			[States.Resolution] = true,
+			[States.ModifierResolution] = true,
+		}
+
+		if resolutionPhases[_CurrentState] then
+			-- Defer placement assignment for tie detection
+			_EliminatedThisResolution[player] = true
+		else
+			-- Immediate placement for non-resolution eliminations
+			_RoundPlayers[player].PlacementPosition = GetAliveCount() + 1
+		end
 	end
 
 	-- Restore original character or cleanup dummy
@@ -1139,17 +1201,16 @@ function RoundService:EliminatePlayer(player, eliminatedBy)
 		end
 	end
 
-	-- Check if round should end (during active phases)
-	local activePhases = {
+	-- Check if round should end (during non-resolution phases only)
+	-- Resolution phases (Launching, Resolution, ModifierResolution) wait for movement to settle
+	-- before checking win condition, to allow for tie detection
+	local immediateEndPhases = {
 		[States.ModifierSetup] = true,
 		[States.Aiming] = true,
 		[States.Revealing] = true,
-		[States.Launching] = true,
-		[States.ModifierResolution] = true,
-		[States.Resolution] = true,
 	}
 
-	if GetAliveCount() <= 1 and activePhases[_CurrentState] then
+	if GetAliveCount() <= 1 and immediateEndPhases[_CurrentState] then
 		ClearTimer()
 		TransitionTo(States.RoundEnd)
 	end
