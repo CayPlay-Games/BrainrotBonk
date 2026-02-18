@@ -23,11 +23,14 @@ local _ChoosingMapGui = nil
 local _RouletteScroller = nil
 local _MapTemplate = nil
 local _IsSetup = false
+local _WinnerGui = nil
+local _WinnerLabel = nil
 
 -- Constants --
 local ROULETTE_ITEM_HEIGHT = 50 -- Height per map entry (pixels)
 local ROULETTE_LOOPS = 3 -- How many times to loop through all maps
 local ROULETTE_DURATION = 2.5 -- Total animation duration in seconds
+local WINNER_NOTIFICATION_DURATION = 3 -- Seconds to show winner notification
 
 -- Internal Functions --
 
@@ -169,6 +172,31 @@ local function ShowChoosingMapNotification(mapId)
 	end)
 end
 
+-- Sets up the Winner notification UI
+local function SetupWinnerUI(screenGui)
+	_WinnerGui = screenGui
+	local container = screenGui:WaitForChild("Container")
+	_WinnerLabel = container:FindFirstChild("WinnerText") or container:FindFirstChildOfClass("TextLabel")
+end
+
+local function ShowWinnerNotification(winnerName)
+	if not winnerName or winnerName == "" then
+		return
+	end
+	if not _WinnerGui then
+		return
+	end
+	if _WinnerLabel then
+		_WinnerLabel.Text = winnerName .. " Won!"
+	end
+	_WinnerGui.Enabled = true
+	task.delay(WINNER_NOTIFICATION_DURATION, function()
+		if _WinnerGui then
+			_WinnerGui.Enabled = false
+		end
+	end)
+end
+
 -- Sets up ChoosingMap notification UI
 local function SetupChoosingMapUI(screenGui)
 	_ChoosingMapGui = screenGui
@@ -207,6 +235,19 @@ function NotificationController:Init()
 		end)
 
 		_IsSetup = true
+	end)
+
+	-- Setup Winner notification UI
+	UIController:WhenScreenGuiReady("Notification_Winner", function(screenGui)
+		SetupWinnerUI(screenGui)
+
+		-- Listen for winner announcements
+		local roundState = ClientDataStream.RoundState
+		roundState.Winner:Changed(function(winnerData)
+			if winnerData and winnerData.DisplayName and winnerData.DisplayName ~= "" then
+				ShowWinnerNotification(winnerData.DisplayName)
+			end
+		end)
 	end)
 end
 

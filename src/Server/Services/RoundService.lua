@@ -20,6 +20,8 @@ local RoundService = {}
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Dependencies --
 local DataStream = shared("DataStream")
@@ -98,6 +100,66 @@ local function DebugLog(...)
 	if RoundConfig.DEBUG_LOG_STATE_CHANGES then
 		print("[RoundService]", ...)
 	end
+end
+
+-- Winner celebration constants
+local WINNER_CELEBRATION_DURATION = 3 -- Seconds to show winner with particles
+local WINNER_PARTICLES_CLEANUP_DELAY = 3 -- Seconds after disabling before Debris cleanup
+
+-- Spawns winner celebration particles on the winner's character
+local function SpawnWinnerParticles(winner)
+	local character = winner.Character
+	if not character then
+		return nil
+	end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then
+		return nil
+	end
+
+	-- Get the WinnerParticles model from ReplicatedStorage
+	local particlesFolder = ReplicatedStorage:FindFirstChild("Assets")
+	particlesFolder = particlesFolder and particlesFolder:FindFirstChild("ParticleEmitters")
+	local particleTemplate = particlesFolder and particlesFolder:FindFirstChild("WinnerParticles")
+
+	if not particleTemplate then
+		warn("[RoundService] WinnerParticles not found in ReplicatedStorage/Assets/ParticleEmitters")
+		return nil
+	end
+
+	-- Clone and position the particles
+	local particles = particleTemplate:Clone()
+	particles:PivotTo(hrp.CFrame)
+	particles.Parent = workspace
+
+	-- Enable all ParticleEmitters
+	for _, descendant in particles:GetDescendants() do
+		if descendant:IsA("ParticleEmitter") then
+			descendant.Enabled = true
+		end
+	end
+
+	DebugLog("Spawned winner particles for", winner.DisplayName)
+	return particles
+end
+
+-- Stops and cleans up winner particles
+local function StopWinnerParticles(particles)
+	if not particles then
+		return
+	end
+
+	-- Disable all ParticleEmitters
+	for _, descendant in particles:GetDescendants() do
+		if descendant:IsA("ParticleEmitter") then
+			descendant.Enabled = false
+		end
+	end
+
+	-- Schedule cleanup with Debris
+	Debris:AddItem(particles, WINNER_PARTICLES_CLEANUP_DELAY)
+	DebugLog("Winner particles disabled, cleanup scheduled")
 end
 
 -- Updates the DataStream with current round state
@@ -1027,33 +1089,50 @@ local function EnterRoundEnd()
 
 	CleanupCharacterTouchTracking()
 
-	-- After round end duration, go back to waiting
-	StartTimer(RoundConfig.Timers.ROUND_END_DURATION, function()
-		-- Cleanup modifier before map unload
-		ModifierService:OnMapUnload()
+	-- Spawn winner celebration particles if there's a winner
+	local winnerParticles = nil
+	if winner and not (type(winner) == "table" and winner.IsDummy) then
+		winnerParticles = SpawnWinnerParticles(winner)
+	end
 
-		-- Unload the current map
-		MapService:UnloadCurrentMap()
-		_CurrentSpawnPoints = {}
+	-- If there's a winner, show celebration first, then proceed
+	local celebrationDelay = winner and WINNER_CELEBRATION_DURATION or 0
 
-		-- Restore original characters (removes physics box) and teleport to lobby
-		-- Only for players still alive (eliminated players were already handled)
-		for entity in pairs(_AlivePlayers) do
-			if type(entity) == "table" and entity.IsDummy then
-				CleanupDummy(entity)
-			else
-				SkinService:RestoreOriginalCharacter(entity)
-				TeleportToLobby(entity)
-			end
+	-- After celebration (if any), proceed with round end cleanup
+	task.delay(celebrationDelay, function()
+		-- Stop winner particles
+		if winnerParticles then
+			StopWinnerParticles(winnerParticles)
 		end
 
-		-- Cleanup any remaining dummies
-		CleanupAllDummies()
+		-- After round end duration, go back to waiting
+		StartTimer(RoundConfig.Timers.ROUND_END_DURATION, function()
+			-- Cleanup modifier before map unload
+			ModifierService:OnMapUnload()
 
-		-- Intermission before next round
-		DebugLog("Intermission...")
-		task.delay(RoundConfig.Timers.INTERMISSION_DURATION, function()
-			TransitionTo(States.Waiting)
+			-- Unload the current map
+			MapService:UnloadCurrentMap()
+			_CurrentSpawnPoints = {}
+
+			-- Restore original characters (removes physics box) and teleport to lobby
+			-- Only for players still alive (eliminated players were already handled)
+			for entity in pairs(_AlivePlayers) do
+				if type(entity) == "table" and entity.IsDummy then
+					CleanupDummy(entity)
+				else
+					SkinService:RestoreOriginalCharacter(entity)
+					TeleportToLobby(entity)
+				end
+			end
+
+			-- Cleanup any remaining dummies
+			CleanupAllDummies()
+
+			-- Intermission before next round
+			DebugLog("Intermission...")
+			task.delay(RoundConfig.Timers.INTERMISSION_DURATION, function()
+				TransitionTo(States.Waiting)
+			end)
 		end)
 	end)
 end
