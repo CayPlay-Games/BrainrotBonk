@@ -84,13 +84,13 @@ local function CreatePhysicsBox(player, spawnCFrame)
 		100 -- ElasticityWeight (high for consistent bounces)
 	)
 
-	-- Dampen rotation (resists slow drift but allows collision-based rotation)
-	local angularVelocity = Instance.new("AngularVelocity")
-	angularVelocity.Attachment0 = Instance.new("Attachment", rootPart)
-	angularVelocity.AngularVelocity = Vector3.zero
-	angularVelocity.MaxTorque = 5000
-	angularVelocity.RelativeTo = Enum.ActuatorRelativeTo.World
-	angularVelocity.Parent = rootPart
+	-- -- Dampen rotation (resists slow drift but allows collision-based rotation)
+	-- local angularVelocity = Instance.new("AngularVelocity")
+	-- angularVelocity.Attachment0 = Instance.new("Attachment", rootPart)
+	-- angularVelocity.AngularVelocity = Vector3.zero
+	-- angularVelocity.MaxTorque = 5000
+	-- angularVelocity.RelativeTo = Enum.ActuatorRelativeTo.World
+	-- angularVelocity.Parent = rootPart
 
 
 	rootPart.Parent = physicsBox

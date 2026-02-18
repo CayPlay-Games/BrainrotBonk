@@ -206,12 +206,19 @@ function PhysicsService:Init()
 	-- Create collision signal
 	PhysicsService.CollisionOccurred = Signal.new()
 
-	-- Periodically clean up old cooldowns
+	-- Periodically clean up old cooldowns and prevent rotation
 	RunService.Heartbeat:Connect(function()
 		local now = tick()
 		for key, timestamp in pairs(_CollisionCooldowns) do
 			if (now - timestamp) > RoundConfig.COLLISION_COOLDOWN * 2 then
 				_CollisionCooldowns[key] = nil
+			end
+		end
+
+		-- Prevent rotation on all active physics boxes
+		for hrp, _ in pairs(_ActivePlayers) do
+			if hrp and hrp.Parent then
+				hrp.AssemblyAngularVelocity = Vector3.zero
 			end
 		end
 	end)
