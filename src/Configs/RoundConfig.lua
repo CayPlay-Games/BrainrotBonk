@@ -60,6 +60,7 @@ return TableHelper:DeepFreeze({
 	CURLING_COLLISION_RESTITUTION = 0.45, -- Lower = more energy absorbed, less bouncy
 
 	-- Physics box settings (standardized player body during rounds)
+	PHYSICS_BOX_TEMPLATE = "Hitbox", -- Optional: name of Part in ServerStorage to use as hitbox base (e.g. "CustomHitbox")
 	PHYSICS_BOX_SIZE = Vector3.new(3.5, 5, 3.5), -- Size of the cube
 	PHYSICS_BOX_DENSITY = 25, -- Higher density for heavier, more substantial feel
 	PHYSICS_BOX_FRICTION = 0.05, -- Low friction on player boxes

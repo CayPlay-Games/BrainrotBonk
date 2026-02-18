@@ -45,14 +45,31 @@ local function CreatePhysicsBox(player, spawnCFrame)
 	local physicsBox = Instance.new("Model")
 	physicsBox.Name = player.Name
 
-	-- Create the main physics body (box)
-	local rootPart = Instance.new("Part")
+	local rootPart
+
+	-- Check if a custom hitbox template is specified
+	if RoundConfig.PHYSICS_BOX_TEMPLATE then
+		local template = ServerStorage:FindFirstChild(RoundConfig.PHYSICS_BOX_TEMPLATE)
+		if template and template:IsA("BasePart") then
+			rootPart = template:Clone()
+			DebugLog("Using custom hitbox template:", RoundConfig.PHYSICS_BOX_TEMPLATE)
+		else
+			warn("[SkinService] Custom hitbox template not found in ServerStorage:", RoundConfig.PHYSICS_BOX_TEMPLATE)
+		end
+	end
+
+	-- Fallback to creating a new Part if no template or template not found
+	if not rootPart then
+		rootPart = Instance.new("Part")
+		rootPart.Material = Enum.Material.SmoothPlastic
+		rootPart.TopSurface = Enum.SurfaceType.Smooth
+		rootPart.BottomSurface = Enum.SurfaceType.Smooth
+	end
+
+	-- Apply standard properties from config (overrides template properties)
 	rootPart.Name = "HumanoidRootPart"
 	rootPart.Size = RoundConfig.PHYSICS_BOX_SIZE
 	rootPart.Color = RoundConfig.PHYSICS_BOX_COLOR
-	rootPart.Material = Enum.Material.SmoothPlastic
-	rootPart.TopSurface = Enum.SurfaceType.Smooth
-	rootPart.BottomSurface = Enum.SurfaceType.Smooth
 	rootPart.CanCollide = true
 	rootPart.Anchored = false
 	rootPart.Transparency = 0.8
@@ -66,6 +83,15 @@ local function CreatePhysicsBox(player, spawnCFrame)
 		1, -- FrictionWeight (low, let floor friction dominate)
 		100 -- ElasticityWeight (high for consistent bounces)
 	)
+
+	-- Dampen rotation (resists slow drift but allows collision-based rotation)
+	local angularVelocity = Instance.new("AngularVelocity")
+	angularVelocity.Attachment0 = Instance.new("Attachment", rootPart)
+	angularVelocity.AngularVelocity = Vector3.zero
+	angularVelocity.MaxTorque = 5000
+	angularVelocity.RelativeTo = Enum.ActuatorRelativeTo.World
+	angularVelocity.Parent = rootPart
+
 
 	rootPart.Parent = physicsBox
 
