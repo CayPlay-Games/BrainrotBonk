@@ -24,13 +24,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ClientDataStream = shared("ClientDataStream")
 local GetRemoteEvent = shared("GetRemoteEvent")
 local RoundConfig = shared("RoundConfig")
+local ArrowsConfig = shared("ArrowsConfig")
 local PromiseWaitForDataStream = shared("PromiseWaitForDataStream")
 
 -- Object References --
 local LocalPlayer = Players.LocalPlayer
 local CurrentCamera = workspace.CurrentCamera
 local SubmitAimRemoteEvent = GetRemoteEvent("SubmitAim")
-local ArrowTemplate = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Arrow")
+local ArrowsFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild(ArrowsConfig.ARROWS_FOLDER_NAME)
+local DefaultArrowTemplate = ArrowsFolder:WaitForChild(ArrowsConfig.DEFAULT_ARROW)
 
 -- Constants --
 local ARROW_BASE_SCALE_X = 1 -- Base X scale at minimum power
@@ -63,8 +65,40 @@ local function IsLocalPlayerInRound()
 	return playerData ~= nil and playerData.IsAlive == true
 end
 
+-- Gets the arrow template for a given arrow ID
+local function GetArrowTemplate(arrowId)
+	arrowId = arrowId or ArrowsConfig.DEFAULT_ARROW
+
+	-- Validate arrow exists in config
+	if not ArrowsConfig.Arrows[arrowId] then
+		arrowId = ArrowsConfig.DEFAULT_ARROW
+	end
+
+	local arrowConfig = ArrowsConfig.Arrows[arrowId]
+	local template = ArrowsFolder:FindFirstChild(arrowConfig.ModelName)
+
+	if not template then
+		warn("[AimController] Arrow model not found:", arrowConfig.ModelName)
+		return DefaultArrowTemplate
+	end
+
+	return template
+end
+
+-- Gets the local player's equipped arrow ID from DataStream
+local function GetLocalPlayerEquippedArrow()
+	local stored = ClientDataStream.Stored
+	if stored and stored.Arrows then
+		local equipped = stored.Arrows.Equipped:Read()
+		if equipped and ArrowsConfig.Arrows[equipped] then
+			return equipped
+		end
+	end
+	return ArrowsConfig.DEFAULT_ARROW
+end
+
 -- Creates an arrow for a specific character
-local function CreateArrowForCharacter(character)
+local function CreateArrowForCharacter(character, arrowId)
 	if not character then
 		return nil
 	end
@@ -74,8 +108,11 @@ local function CreateArrowForCharacter(character)
 		return nil
 	end
 
+	-- Get the appropriate arrow template
+	local template = GetArrowTemplate(arrowId)
+
 	-- Clone the arrow template
-	local arrow = ArrowTemplate:Clone()
+	local arrow = template:Clone()
 	arrow.Name = "AimArrow"
 	arrow.Anchored = true
 	arrow.CanCollide = false
@@ -86,7 +123,7 @@ local function CreateArrowForCharacter(character)
 end
 
 -- Updates an arrow's position, rotation, and scale based on direction and power
-local function UpdateArrowTransform(arrow, character, direction, power)
+local function UpdateArrowTransform(arrow, character, direction, power, arrowId)
 	if not arrow or not character then
 		return
 	end
@@ -96,12 +133,14 @@ local function UpdateArrowTransform(arrow, character, direction, power)
 		return
 	end
 
+	local template = GetArrowTemplate(arrowId)
+
 	-- Calculate scale based on power (X direction)
 	local powerRatio = (power - RoundConfig.AIM_POWER_MIN) / (RoundConfig.AIM_POWER_MAX - RoundConfig.AIM_POWER_MIN)
 	local scaleX = ARROW_BASE_SCALE_X + powerRatio * (ARROW_MAX_SCALE_X - ARROW_BASE_SCALE_X)
 
 	-- Calculate arrow size
-	local baseSize = ArrowTemplate.Size * ARROW_SIZE_MULTIPLIER
+	local baseSize = template.Size * ARROW_SIZE_MULTIPLIER
 	local arrowSizeX = baseSize.X * scaleX
 	arrow.Size = Vector3.new(arrowSizeX, baseSize.Y, baseSize.Z)
 
@@ -123,7 +162,8 @@ local function CreateAimArrow()
 	end
 
 	local character = LocalPlayer.Character
-	_AimArrow = CreateArrowForCharacter(character)
+	local equippedArrow = GetLocalPlayerEquippedArrow()
+	_AimArrow = CreateArrowForCharacter(character, equippedArrow)
 end
 
 -- Updates the arrow position and rotation to match aim direction
@@ -142,13 +182,16 @@ local function UpdateAimArrow()
 		return
 	end
 
+	local equippedArrow = GetLocalPlayerEquippedArrow()
+	local template = GetArrowTemplate(equippedArrow)
+
 	-- Calculate scale based on power (X direction)
 	local powerRatio = (_CurrentPower - RoundConfig.AIM_POWER_MIN)
 		/ (RoundConfig.AIM_POWER_MAX - RoundConfig.AIM_POWER_MIN)
 	local scaleX = ARROW_BASE_SCALE_X + powerRatio * (ARROW_MAX_SCALE_X - ARROW_BASE_SCALE_X)
 
 	-- Calculate arrow size
-	local baseSize = ArrowTemplate.Size * ARROW_SIZE_MULTIPLIER
+	local baseSize = template.Size * ARROW_SIZE_MULTIPLIER
 	local arrowSizeX = baseSize.X * scaleX
 	_AimArrow.Size = Vector3.new(arrowSizeX, baseSize.Y, baseSize.Z)
 
@@ -339,10 +382,11 @@ local function StartReveal()
 			-- Reconstruct direction Vector3 from table
 			local direction = Vector3.new(aimData.Direction.X, aimData.Direction.Y, aimData.Direction.Z)
 			local power = aimData.Power
+			local arrowId = aimData.ArrowId or ArrowsConfig.DEFAULT_ARROW
 
-			local arrow = CreateArrowForCharacter(character)
+			local arrow = CreateArrowForCharacter(character, arrowId)
 			if arrow then
-				UpdateArrowTransform(arrow, character, direction, power)
+				UpdateArrowTransform(arrow, character, direction, power, arrowId)
 				_RevealArrows[character] = arrow
 			end
 		end

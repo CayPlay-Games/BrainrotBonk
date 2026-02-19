@@ -13,14 +13,17 @@ local SkinsWindowController = {}
 local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
 local UIController = shared("UIController")
 local SkinsConfig = shared("SkinsConfig")
+local ArrowsConfig = shared("ArrowsConfig")
 local GetRemoteEvent = shared("GetRemoteEvent")
 local RoundConfig = shared("RoundConfig")
 
 -- Remote Events --
 local EquipSkinRemoteEvent = GetRemoteEvent("EquipSkin")
+local EquipArrowRemoteEvent = GetRemoteEvent("EquipArrow")
 
 -- Private Variables --
 local _ScreenGui = nil
+local _MainFrame = nil
 local _SkinGrid = nil
 local _PreviewPanel = nil
 local _PreviewImage = nil
@@ -29,13 +32,23 @@ local _RarityLabel = nil
 local _SkinNameLabel = nil
 local _MutationLabel = nil
 local _SkinCardTemplate = nil
-local _SkinCards = {} -- keyed by "skinId_mutation"
+local _SkinCards = {} -- keyed by "skinId_mutation" for skins, or "arrowId" for arrows
 local _SelectedSkinId = nil
 local _SelectedMutation = nil
 local _EquippedSkinId = nil
 local _EquippedMutation = nil
 local _IsSetup = false
 local _PlayerStoredDataStream = nil
+
+-- Tab State --
+local _CurrentTab = "Skins" -- "Skins" or "Arrows"
+local _Sidebar = nil
+local _SkinsTabButton = nil
+local _ArrowsTabButton = nil
+
+-- Arrow State --
+local _SelectedArrowId = nil
+local _EquippedArrowId = nil
 
 -- Internal Functions --
 
@@ -59,21 +72,67 @@ local function GetSkinIcon(skinId)
 	return nil
 end
 
+-- Gets the icon for an arrow from config
+local function GetArrowIcon(arrowId)
+	local arrowConfig = ArrowsConfig.Arrows[arrowId]
+	if arrowConfig and arrowConfig.Icon then
+		return arrowConfig.Icon
+	end
+	return nil
+end
+
+-- Updates tab button visuals to show which is active
+local function UpdateTabVisuals()
+	if not _SkinsTabButton or not _ArrowsTabButton then
+		return
+	end
+
+	local activeColor = Color3.fromRGB(255, 255, 255)
+	local inactiveColor = Color3.fromRGB(125, 125, 125)
+
+	if _CurrentTab == "Skins" then
+		_SkinsTabButton.ImageColor3 = activeColor
+		_ArrowsTabButton.ImageColor3 = inactiveColor
+	else
+		_SkinsTabButton.ImageColor3 = inactiveColor
+		_ArrowsTabButton.ImageColor3 = activeColor
+	end
+
+	local header = _MainFrame:FindFirstChild("Header")
+	local titleImage = header and header:FindFirstChild("Title")
+	local titleText = titleImage and titleImage:FindFirstChild("TextLabel")
+	if titleText then
+		titleText.Text = "Your " .. _CurrentTab
+	end
+	
+end
+
 -- Updates equipped indicators on all cards
 local function UpdateEquippedIndicators()
-	local equippedKey = GetCardKey(_EquippedSkinId, _EquippedMutation or "Normal")
-	for cardKey, card in pairs(_SkinCards) do
-		local equippedIcon = card:FindFirstChild("EquippedIcon")
-		if equippedIcon then
-			equippedIcon.Visible = (cardKey == equippedKey)
+	if _CurrentTab == "Skins" then
+		local equippedKey = GetCardKey(_EquippedSkinId, _EquippedMutation or "Normal")
+		for cardKey, card in pairs(_SkinCards) do
+			local equippedIcon = card:FindFirstChild("EquippedIcon")
+			if equippedIcon then
+				equippedIcon.Visible = (cardKey == equippedKey)
+			end
+		end
+	else
+		-- Arrows tab
+		for cardKey, card in pairs(_SkinCards) do
+			local equippedIcon = card:FindFirstChild("EquippedIcon")
+			if equippedIcon then
+				equippedIcon.Visible = (cardKey == _EquippedArrowId)
+			end
 		end
 	end
 end
 
 -- Updates the preview panel with selected skin
-local function UpdatePreview(skinId, mutation)
+local function UpdateSkinPreview(skinId, mutation)
 	_SelectedSkinId = skinId
 	_SelectedMutation = mutation or "Normal"
+	_SelectedArrowId = nil -- Clear arrow selection
 	local skinConfig = SkinsConfig.Skins[skinId]
 	if not skinConfig then
 		return
@@ -115,6 +174,45 @@ local function UpdatePreview(skinId, mutation)
 		_EquipButton.TextLabel.Text = "Equip"
 		_EquipButton.ImageColor3 = Color3.fromRGB(80, 200, 80)
 	end
+end
+
+-- Updates the preview panel with selected arrow
+local function UpdateArrowPreview(arrowId)
+	_SelectedArrowId = arrowId
+	_SelectedSkinId = nil -- Clear skin selection
+	_SelectedMutation = nil
+	local arrowConfig = ArrowsConfig.Arrows[arrowId]
+	if not arrowConfig then
+		return
+	end
+
+	-- Update name label
+	_SkinNameLabel.Text = arrowConfig.DisplayName
+
+	-- Hide mutation label for arrows
+	if _MutationLabel then
+		_MutationLabel.Visible = false
+	end
+
+	-- Update preview image
+	local icon = GetArrowIcon(arrowId)
+	if _PreviewImage and icon then
+		_PreviewImage.Image = icon
+	end
+
+	-- Update equip button
+	if arrowId == _EquippedArrowId then
+		_EquipButton.TextLabel.Text = "Equipped"
+		_EquipButton.ImageColor3 = Color3.fromRGB(100, 100, 100)
+	else
+		_EquipButton.TextLabel.Text = "Equip"
+		_EquipButton.ImageColor3 = Color3.fromRGB(80, 200, 80)
+	end
+end
+
+-- Updates the preview panel (delegates to skin or arrow)
+local function UpdatePreview(skinId, mutation)
+	UpdateSkinPreview(skinId, mutation)
 end
 
 -- Updates a skin card's visual properties
@@ -190,13 +288,63 @@ local function CreateSkinCard(skinId, mutation)
 	return card
 end
 
--- Populates the grid with unlocked skins (optimized - only creates/removes as needed)
-local function PopulateGrid()
-	-- Get skins data from DataStream
-	if not _PlayerStoredDataStream then
-		return
+-- Creates an arrow card for the grid
+local function CreateArrowCard(arrowId)
+	local arrowConfig = ArrowsConfig.Arrows[arrowId]
+	if not arrowConfig then
+		return nil
 	end
 
+	local card = _SkinCardTemplate:Clone()
+	card.Name = arrowId
+	card.Visible = true
+
+	-- Setup icon preview
+	local preview = card:FindFirstChild("Preview")
+	if preview then
+		local imageLabel = preview:FindFirstChild("ImageLabel")
+		if imageLabel then
+			local icon = GetArrowIcon(arrowId)
+			if icon then
+				imageLabel.Image = icon
+			end
+		end
+	end
+
+
+	-- Set name label
+	local nameLabel = card:FindFirstChild("SkinName") or card:FindFirstChild("NameLabel")
+	if nameLabel then
+		nameLabel.Text = arrowConfig.DisplayName
+	end
+
+	-- Update equipped indicator
+	local equippedIcon = card:FindFirstChild("EquippedIcon")
+	if equippedIcon then
+		equippedIcon.Visible = (arrowId == _EquippedArrowId)
+	end
+
+	-- Setup click handler
+	card.MouseButton1Click:Connect(function()
+		UpdateArrowPreview(arrowId)
+	end)
+
+	card.Parent = _SkinGrid
+	_SkinCards[arrowId] = card
+
+	return card
+end
+
+-- Clears all cards from the grid
+local function ClearGrid()
+	for cardKey, card in pairs(_SkinCards) do
+		card:Destroy()
+	end
+	_SkinCards = {}
+end
+
+-- Populates the grid with skins
+local function PopulateSkinsGrid()
 	-- Read from Collections.Skins
 	local ownedSkins = {}
 	if _PlayerStoredDataStream.Collections and _PlayerStoredDataStream.Collections.Skins then
@@ -206,11 +354,9 @@ local function PopulateGrid()
 	_EquippedMutation = _PlayerStoredDataStream.Skins.EquippedMutation:Read() or "Normal"
 
 	-- Build set of unlocked skin+mutation combos from Collections format
-	-- Collections format: { ["SkinId_Mutation"] = count }
 	local unlockedSet = {}
 	for itemId, count in pairs(ownedSkins) do
 		if count >= 1 then
-			-- Parse "SkinId_MutationId" format
 			local skinId, mutationId = string.match(itemId, "^(.+)_([^_]+)$")
 			if skinId and mutationId and SkinsConfig.Skins[skinId] then
 				local cardKey = GetCardKey(skinId, mutationId)
@@ -227,7 +373,7 @@ local function PopulateGrid()
 		end
 	end
 
-	-- Sort by mutation sort order first, then rarity, then name
+	-- Sort by rarity, mutation, then name
 	local sortedCombos = {}
 	for cardKey, data in pairs(unlockedSet) do
 		table.insert(sortedCombos, { Key = cardKey, SkinId = data.SkinId, Mutation = data.Mutation })
@@ -241,29 +387,23 @@ local function PopulateGrid()
 		local mutationA = SkinsConfig.Mutations[a.Mutation] or SkinsConfig.Mutations.Normal
 		local mutationB = SkinsConfig.Mutations[b.Mutation] or SkinsConfig.Mutations.Normal
 
-		
-		-- Sort by rarity (lower rarity first)
 		if rarityA.SortOrder ~= rarityB.SortOrder then
 			return rarityA.SortOrder < rarityB.SortOrder
 		end
-		-- Then by mutation first (lower mutation first)
 		if mutationA.SortOrder ~= mutationB.SortOrder then
 			return mutationA.SortOrder < mutationB.SortOrder
 		end
-		-- Then alphabetically by skin name
 		return a.SkinId < b.SkinId
 	end)
 
 	-- Create or update cards
-	for index, combo in ipairs(sortedCombos) do
+	for _, combo in ipairs(sortedCombos) do
 		local cardKey = combo.Key
 		local card = _SkinCards[cardKey]
 		if card then
-			-- Update existing card
 			UpdateSkinCard(card, combo.SkinId, combo.Mutation)
 		else
-			-- Create new card
-			card = CreateSkinCard(combo.SkinId, combo.Mutation)
+			CreateSkinCard(combo.SkinId, combo.Mutation)
 		end
 	end
 
@@ -272,10 +412,74 @@ local function PopulateGrid()
 	if not selectedKey or not _SkinCards[selectedKey] then
 		local equippedKey = GetCardKey(_EquippedSkinId, _EquippedMutation)
 		if _SkinCards[equippedKey] then
-			UpdatePreview(_EquippedSkinId, _EquippedMutation)
+			UpdateSkinPreview(_EquippedSkinId, _EquippedMutation)
 		elseif sortedCombos[1] then
-			UpdatePreview(sortedCombos[1].SkinId, sortedCombos[1].Mutation)
+			UpdateSkinPreview(sortedCombos[1].SkinId, sortedCombos[1].Mutation)
 		end
+	end
+end
+
+-- Populates the grid with arrows
+local function PopulateArrowsGrid()
+	-- Read from Collections.Arrows
+	local ownedArrows = {}
+	if _PlayerStoredDataStream.Collections and _PlayerStoredDataStream.Collections.Arrows then
+		ownedArrows = _PlayerStoredDataStream.Collections.Arrows:Read() or {}
+	end
+	_EquippedArrowId = _PlayerStoredDataStream.Arrows.Equipped:Read() or ArrowsConfig.DEFAULT_ARROW
+
+	-- Build set of unlocked arrows
+	local unlockedSet = {}
+	for arrowId, count in pairs(ownedArrows) do
+		if count >= 1 and ArrowsConfig.Arrows[arrowId] then
+			unlockedSet[arrowId] = true
+		end
+	end
+
+	-- Remove cards for arrows no longer unlocked
+	for cardKey, card in pairs(_SkinCards) do
+		if not unlockedSet[cardKey] then
+			card:Destroy()
+			_SkinCards[cardKey] = nil
+		end
+	end
+
+	-- Sort by rarity then name
+	local sortedArrows = {}
+	for arrowId in pairs(unlockedSet) do
+		table.insert(sortedArrows, arrowId)
+	end
+
+	-- Create cards for arrows
+	for _, arrowId in ipairs(sortedArrows) do
+		if not _SkinCards[arrowId] then
+			CreateArrowCard(arrowId)
+		end
+	end
+
+	-- Select equipped arrow by default if nothing selected
+	if not _SelectedArrowId or not _SkinCards[_SelectedArrowId] then
+		if _SkinCards[_EquippedArrowId] then
+			UpdateArrowPreview(_EquippedArrowId)
+		elseif sortedArrows[1] then
+			UpdateArrowPreview(sortedArrows[1])
+		end
+	end
+end
+
+-- Populates the grid based on current tab
+local function PopulateGrid()
+	if not _PlayerStoredDataStream then
+		return
+	end
+
+	-- Clear grid when switching tabs (cards are incompatible between tabs)
+	ClearGrid()
+
+	if _CurrentTab == "Skins" then
+		PopulateSkinsGrid()
+	else
+		PopulateArrowsGrid()
 	end
 
 	UpdateEquippedIndicators()
@@ -288,8 +492,8 @@ local function SetupUI(screenGui)
 	end
 
 	_ScreenGui = screenGui
-	local mainFrame = _ScreenGui:WaitForChild("MainFrame")
-	local contentArea = mainFrame:WaitForChild("ContentArea")
+	_MainFrame = _ScreenGui:WaitForChild("MainFrame")
+	local contentArea = _MainFrame:WaitForChild("ContentArea")
 
 	-- Preview panel references
 	_PreviewPanel = contentArea:WaitForChild("PreviewPanel")
@@ -306,11 +510,53 @@ local function SetupUI(screenGui)
 		_SkinCardTemplate.Visible = false
 	end
 
-	-- Equip button handler
+	-- Sidebar/tab references
+	_Sidebar = _MainFrame:FindFirstChild("Sidebar")
+	if _Sidebar then
+		_SkinsTabButton = _Sidebar:FindFirstChild("Skins")
+		_ArrowsTabButton = _Sidebar:FindFirstChild("ArrowsTab")
+		print("[SkinsWindowController] Found Sidebar, SkinsTab:", _SkinsTabButton, "ArrowsTab:", _ArrowsTabButton)
+
+		-- Tab click handlers
+		if _SkinsTabButton then
+			_SkinsTabButton.MouseButton1Click:Connect(function()
+				if _CurrentTab ~= "Skins" then
+					_CurrentTab = "Skins"
+					UpdateTabVisuals()
+					PopulateGrid()
+				end
+			end)
+		end
+
+		if _ArrowsTabButton then
+			_ArrowsTabButton.MouseButton1Click:Connect(function()
+				if _CurrentTab ~= "Arrows" then
+					_CurrentTab = "Arrows"
+					UpdateTabVisuals()
+					PopulateGrid()
+				end
+			end)
+		end
+
+		-- Set initial tab visuals
+		UpdateTabVisuals()
+	else
+		warn("[SkinsWindowController] Sidebar not found in ContentArea")
+	end
+
+	-- Equip button handler (handles both skins and arrows)
 	_EquipButton.MouseButton1Click:Connect(function()
-		local isEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
-		if _SelectedSkinId and not isEquipped then
-			EquipSkinRemoteEvent:FireServer(_SelectedSkinId, _SelectedMutation or "Normal")
+		if _CurrentTab == "Skins" then
+			local isEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
+			if _SelectedSkinId and not isEquipped then
+				EquipSkinRemoteEvent:FireServer(_SelectedSkinId, _SelectedMutation or "Normal")
+			end
+		else
+			-- Arrows tab
+			local isEquipped = _SelectedArrowId == _EquippedArrowId
+			if _SelectedArrowId and not isEquipped then
+				EquipArrowRemoteEvent:FireServer(_SelectedArrowId)
+			end
 		end
 	end)
 
@@ -337,32 +583,63 @@ function SkinsWindowController:Init()
 			-- Listen for skin changes
 			_PlayerStoredDataStream.Skins.Equipped:Changed(function(newEquipped)
 				_EquippedSkinId = newEquipped
-				UpdateEquippedIndicators()
+				if _CurrentTab == "Skins" then
+					UpdateEquippedIndicators()
 
-				-- Update equip button if viewing this skin+mutation combo
-				local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
-				if isNowEquipped then
-					_EquipButton.TextLabel.Text = "Equipped"
-					_EquipButton.ImageColor3 = Color3.fromRGB(100, 100, 100)
+					-- Update equip button if viewing this skin+mutation combo
+					local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
+					if isNowEquipped then
+						_EquipButton.TextLabel.Text = "Equipped"
+						_EquipButton.ImageColor3 = Color3.fromRGB(100, 100, 100)
+					end
 				end
 			end)
 
 			_PlayerStoredDataStream.Skins.EquippedMutation:Changed(function(newMutation)
 				_EquippedMutation = newMutation
-				UpdateEquippedIndicators()
+				if _CurrentTab == "Skins" then
+					UpdateEquippedIndicators()
 
-				-- Update equip button if viewing this skin+mutation combo
-				local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
-				if isNowEquipped then
-					_EquipButton.TextLabel.Text = "Equipped"
-					_EquipButton.ImageColor3 = Color3.fromRGB(100, 100, 100)
+					-- Update equip button if viewing this skin+mutation combo
+					local isNowEquipped = _SelectedSkinId == _EquippedSkinId and _SelectedMutation == _EquippedMutation
+					if isNowEquipped then
+						_EquipButton.TextLabel.Text = "Equipped"
+						_EquipButton.ImageColor3 = Color3.fromRGB(100, 100, 100)
+					end
 				end
 			end)
 
 			-- Listen for collection changes (new skins unlocked)
 			if _PlayerStoredDataStream.Collections and _PlayerStoredDataStream.Collections.Skins then
 				_PlayerStoredDataStream.Collections.Skins:Changed(function()
-					PopulateGrid()
+					if _CurrentTab == "Skins" then
+						PopulateGrid()
+					end
+				end)
+			end
+
+			-- Listen for arrow changes
+			if _PlayerStoredDataStream.Arrows then
+				_PlayerStoredDataStream.Arrows.Equipped:Changed(function(newEquipped)
+					_EquippedArrowId = newEquipped
+					if _CurrentTab == "Arrows" then
+						UpdateEquippedIndicators()
+
+						-- Update equip button if viewing this arrow
+						if _SelectedArrowId == _EquippedArrowId then
+							_EquipButton.TextLabel.Text = "Equipped"
+							_EquipButton.ImageColor3 = Color3.fromRGB(100, 100, 100)
+						end
+					end
+				end)
+			end
+
+			-- Listen for collection changes (new arrows unlocked)
+			if _PlayerStoredDataStream.Collections and _PlayerStoredDataStream.Collections.Arrows then
+				_PlayerStoredDataStream.Collections.Arrows:Changed(function()
+					if _CurrentTab == "Arrows" then
+						PopulateGrid()
+					end
 				end)
 			end
 
