@@ -4,6 +4,7 @@
 	Description:
 		Map effects for the Traffic Jam map.
 		Spawns cars that travel in straight lines from spawn to end points,
+		with collision detection to prevent same-lane rear-ends and intersection crashes.
 --]]
 
 -- Root --
@@ -99,7 +100,7 @@ local function WouldCollideAtIntersection(lane, spawnTime, travelTime)
 	for _, otherLane in ipairs(_lanes) do
 		if otherLane.activeCars then
 			for _, otherCar in ipairs(otherLane.activeCars) do
-				local otherTimes = GetAllIntersectionTimes(otherLane, otherCar.travelTime)
+				local otherTimes = otherCar.intersectionTimes or {}
 
 				for _, myTime in ipairs(myTimes) do
 					local myEnterAbs = spawnTime + myTime.enterTime
@@ -169,6 +170,7 @@ local function SetupLane(laneFolder, vehicleTemplates)
 		respawnDelayMin = respawnDelayMin,
 		respawnDelayMax = respawnDelayMax,
 		intersections = intersections,
+		lookDir = laneDir, -- Cached direction for car rotation
 		activeCars = {},
 		nextSpawnTime = _startServerTime + initialDelay,
 		pendingVehicle = nil,
@@ -189,6 +191,11 @@ end
 
 -- API Functions --
 function TrafficJamEffects:Start(mapInstance, startServerTime)
+	-- Clean up any existing state first
+	if _updateConnection then
+		self:Stop()
+	end
+
 	_startServerTime = startServerTime
 	-- Seed random with startServerTime so all clients get same sequence
 	_random = Random.new(math.floor(startServerTime * 1000))
@@ -267,6 +274,7 @@ function TrafficJamEffects:Start(mapInstance, startServerTime)
 						model = carModel,
 						spawnTime = currentTime,
 						travelTime = lane.pendingTravelTime,
+						intersectionTimes = GetAllIntersectionTimes(lane, lane.pendingTravelTime),
 					})
 
 					-- Schedule next spawn
@@ -293,8 +301,7 @@ function TrafficJamEffects:Start(mapInstance, startServerTime)
 				else
 					-- Lerp position
 					local pos = lane.spawnCF.Position:Lerp(lane.endCF.Position, alpha)
-					local lookDir = (lane.endCF.Position - lane.spawnCF.Position).Unit
-					car.model:PivotTo(CFrame.lookAt(pos, pos + lookDir))
+					car.model:PivotTo(CFrame.lookAt(pos, pos + lane.lookDir))
 				end
 			end
 		end

@@ -21,6 +21,9 @@ local GetRemoteEvent = shared("GetRemoteEvent")
 local MapEffectStartedEvent = GetRemoteEvent("MapEffectStarted")
 local MapEffectStoppedEvent = GetRemoteEvent("MapEffectStopped")
 
+-- Constants --
+local LATE_JOINER_DELAY = 1 -- Seconds to wait for client to load before sending effects
+
 -- Private Variables --
 local _ActiveMapId = nil
 local _ActiveStartTime = nil
@@ -32,7 +35,6 @@ local _ActiveStartTime = nil
 function MapEffectsService:OnMapLoaded(mapId, mapInstance)
 	_ActiveMapId = mapId
 	_ActiveStartTime = Workspace:GetServerTimeNow()
-
 
 	-- Notify all clients
 	MapEffectStartedEvent:FireAllClients({
@@ -64,8 +66,10 @@ end
 function MapEffectsService:Init()
 	-- Handle late joiners
 	Players.PlayerAdded:Connect(function(player)
-		task.delay(1, function()
-			self:SendActiveEffectsToPlayer(player)
+		task.delay(LATE_JOINER_DELAY, function()
+			if player.Parent then -- Check player still in game
+				self:SendActiveEffectsToPlayer(player)
+			end
 		end)
 	end)
 end
