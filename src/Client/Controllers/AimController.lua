@@ -5,6 +5,7 @@
 		Handles player aiming during the Aiming phase.
 		- Player rotates to face camera direction
 		- Q/E to adjust power level
+		- R to toggle aim lock (freezes aim direction)
 		- Visual arrow indicator for aim direction
 		- Auto-submits aim when phase ends
 		- Shows all player arrows during Revealing phase
@@ -250,6 +251,11 @@ local function StartAiming()
 		-- E to increase power
 		if input.KeyCode == Enum.KeyCode.E then
 			AdjustPower(1)
+		end
+
+		-- R to toggle aim lock
+		if input.KeyCode == Enum.KeyCode.R then
+			AimController:ToggleAimLock()
 		end
 	end)
 

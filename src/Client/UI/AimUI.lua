@@ -16,7 +16,6 @@ local RunService = game:GetService("RunService")
 
 -- Dependencies --
 local ClientDataStream = shared("ClientDataStream")
-local RoundConfig = shared("RoundConfig")
 local PromiseWaitForDataStream = shared("PromiseWaitForDataStream")
 
 -- Object References --
@@ -44,7 +43,7 @@ local function UpdateLockAimButtonVisual()
 	local AimController = shared("AimController")
 	local isLocked = AimController and AimController:IsAimLocked() or false
 
-	_LockAimButton.Text = isLocked and "Locked!" or "Lock Aim?"
+	_LockAimButton.Text = isLocked and "Locked! (R)" or "Lock Aim? (R)"
 	_LockAimButton.BackgroundColor3 = isLocked and Color3.fromRGB(200, 50, 50) or Color3.fromRGB(129, 199, 0)
 end
 
