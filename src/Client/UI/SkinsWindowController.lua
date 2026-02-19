@@ -242,13 +242,13 @@ local function PopulateGrid()
 		local mutationB = SkinsConfig.Mutations[b.Mutation] or SkinsConfig.Mutations.Normal
 
 		
-		-- Sort by rarity (higher rarity first)
+		-- Sort by rarity (lower rarity first)
 		if rarityA.SortOrder ~= rarityB.SortOrder then
-			return rarityA.SortOrder > rarityB.SortOrder
+			return rarityA.SortOrder < rarityB.SortOrder
 		end
-		-- Then by mutation first (higher mutation sort order = rarer = first)
+		-- Then by mutation first (lower mutation first)
 		if mutationA.SortOrder ~= mutationB.SortOrder then
-			return mutationA.SortOrder > mutationB.SortOrder
+			return mutationA.SortOrder < mutationB.SortOrder
 		end
 		-- Then alphabetically by skin name
 		return a.SkinId < b.SkinId
