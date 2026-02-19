@@ -18,6 +18,7 @@ local CollectionService = game:GetService("CollectionService")
 local Promise = shared("Promise")
 local MapsConfig = shared("MapsConfig")
 local RoundConfig = shared("RoundConfig")
+local MapEffectsService = shared("MapEffectsService")
 
 -- Constants --
 local MAPS_FOLDER = ServerStorage:WaitForChild(MapsConfig.MAPS_FOLDER_NAME, 10)
@@ -168,6 +169,10 @@ function MapService:LoadMap(mapId)
 		end
 
 		DebugLog("Map loaded successfully with", #spawnPoints, "spawn points")
+
+		-- Notify MapEffectsService to start any map-specific effects
+		MapEffectsService:OnMapLoaded(mapId, mapClone)
+
 		resolve(spawnPoints)
 	end)
 end
@@ -176,6 +181,10 @@ end
 function MapService:UnloadCurrentMap()
 	if _CurrentMapInstance then
 		DebugLog("Unloading map:", _CurrentMapId)
+
+		-- Notify MapEffectsService to stop any map-specific effects
+		MapEffectsService:OnMapUnload(_CurrentMapId)
+
 		_CurrentMapInstance:Destroy()
 		_CurrentMapInstance = nil
 		_CurrentMapId = nil
