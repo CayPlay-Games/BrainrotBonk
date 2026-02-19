@@ -24,8 +24,8 @@ local _random = nil -- Seeded Random for deterministic "random" delays
 -- Default lane settings (can be overridden via attributes on lane folder)
 local DEFAULT_SPEED_MIN = 120 -- studs/second
 local DEFAULT_SPEED_MAX = 180 -- studs/second
-local DEFAULT_RESPAWN_DELAY_MIN = .5 -- seconds
-local DEFAULT_RESPAWN_DELAY_MAX = 3 -- seconds
+local DEFAULT_RESPAWN_DELAY_MIN = 0.5 -- seconds
+local DEFAULT_RESPAWN_DELAY_MAX = 3.0 -- seconds
 local INTERSECTION_BUFFER = 15 -- studs - buffer around intersection part
 local CAR_LENGTH_BUFFER = 20 -- studs - minimum distance between cars in same lane
 
@@ -86,12 +86,7 @@ local function WouldCollideInSameLane(lane, spawnTime, travelTime)
 	return false
 end
 
-local function WouldCollideAtIntersection(lane, spawnTime, travelTime)
-	if not lane.intersections or #lane.intersections == 0 then
-		return false
-	end
-
-	local myTimes = GetAllIntersectionTimes(lane, travelTime)
+local function WouldCollideAtIntersectionWithTimes(spawnTime, myTimes)
 	if #myTimes == 0 then
 		return false
 	end
@@ -217,6 +212,8 @@ function TrafficJamEffects:Start(mapInstance, startServerTime)
 	local vehicleTemplates = {}
 	for _, child in ipairs(vehiclesFolder:GetChildren()) do
 		if child:IsA("Model") then
+			-- Pre-process collision properties on templates (avoids GetDescendants per spawn)
+			MakeNonCollidable(child)
 			table.insert(vehicleTemplates, child)
 		end
 	end
@@ -234,14 +231,11 @@ function TrafficJamEffects:Start(mapInstance, startServerTime)
 	end
 
 	-- Set up all lanes found in the Lanes folder
-	local laneIndex = 0
 	for _, laneFolder in ipairs(lanesFolder:GetChildren()) do
 		if laneFolder:IsA("Folder") then
 			local lane = SetupLane(laneFolder, vehicleTemplates)
-
 			if lane then
-				laneIndex = laneIndex + 1
-				_lanes[laneIndex] = lane
+				table.insert(_lanes, lane)
 			end
 		end
 	end
@@ -261,20 +255,22 @@ function TrafficJamEffects:Start(mapInstance, startServerTime)
 					lane.pendingTravelTime = lane.distance / speed
 				end
 
+				-- Cache intersection times (used for both collision check and car data)
+				local intersectionTimes = GetAllIntersectionTimes(lane, lane.pendingTravelTime)
+
 				-- Check if spawning now would cause any collision
-				local noIntersectionCollision = not WouldCollideAtIntersection(lane, currentTime, lane.pendingTravelTime)
 				local noSameLaneCollision = not WouldCollideInSameLane(lane, currentTime, lane.pendingTravelTime)
-				if noIntersectionCollision and noSameLaneCollision then
+				local noIntersectionCollision = not WouldCollideAtIntersectionWithTimes(currentTime, intersectionTimes)
+				if noSameLaneCollision and noIntersectionCollision then
 					local carModel = lane.pendingVehicle:Clone()
 					carModel.Parent = Workspace
-					MakeNonCollidable(carModel)
 
 					-- Add to active cars array
 					table.insert(lane.activeCars, {
 						model = carModel,
 						spawnTime = currentTime,
 						travelTime = lane.pendingTravelTime,
-						intersectionTimes = GetAllIntersectionTimes(lane, lane.pendingTravelTime),
+						intersectionTimes = intersectionTimes,
 					})
 
 					-- Schedule next spawn
@@ -306,7 +302,6 @@ function TrafficJamEffects:Start(mapInstance, startServerTime)
 			end
 		end
 	end)
-
 end
 
 function TrafficJamEffects:Stop()
@@ -325,7 +320,6 @@ function TrafficJamEffects:Stop()
 
 	_lanes = {}
 	_random = nil
-
 end
 
 -- Return Module --

@@ -171,7 +171,7 @@ function MapService:LoadMap(mapId)
 		DebugLog("Map loaded successfully with", #spawnPoints, "spawn points")
 
 		-- Notify MapEffectsService to start any map-specific effects
-		MapEffectsService:OnMapLoaded(mapId, mapClone)
+		MapEffectsService:OnMapLoaded(mapId)
 
 		resolve(spawnPoints)
 	end)
@@ -183,7 +183,7 @@ function MapService:UnloadCurrentMap()
 		DebugLog("Unloading map:", _CurrentMapId)
 
 		-- Notify MapEffectsService to stop any map-specific effects
-		MapEffectsService:OnMapUnload(_CurrentMapId)
+		MapEffectsService:OnMapUnload()
 
 		_CurrentMapInstance:Destroy()
 		_CurrentMapInstance = nil

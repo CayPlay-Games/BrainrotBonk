@@ -28,11 +28,8 @@ local LATE_JOINER_DELAY = 1 -- Seconds to wait for client to load before sending
 local _ActiveMapId = nil
 local _ActiveStartTime = nil
 
--- Internal Functions --
-
 -- API Functions --
-
-function MapEffectsService:OnMapLoaded(mapId, mapInstance)
+function MapEffectsService:OnMapLoaded(mapId)
 	_ActiveMapId = mapId
 	_ActiveStartTime = Workspace:GetServerTimeNow()
 
@@ -43,10 +40,10 @@ function MapEffectsService:OnMapLoaded(mapId, mapInstance)
 	})
 end
 
-function MapEffectsService:OnMapUnload(mapId)
+function MapEffectsService:OnMapUnload()
 	if _ActiveMapId then
 		-- Notify all clients to stop effects
-		MapEffectStoppedEvent:FireAllClients(mapId)
+		MapEffectStoppedEvent:FireAllClients(_ActiveMapId)
 
 		_ActiveMapId = nil
 		_ActiveStartTime = nil

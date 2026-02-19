@@ -23,7 +23,6 @@ local MapEffectStoppedEvent = GetRemoteEvent("MapEffectStopped")
 -- Private Variables --
 local _ActiveModule = nil
 local _ActiveMapId = nil
-local _Connections = {}
 
 -- Internal Functions --
 local function TryLoadMapEffectModule(mapId)
@@ -40,7 +39,6 @@ end
 
 local function StopActiveModule()
 	if _ActiveModule then
-
 		local success, err = pcall(function()
 			_ActiveModule:Stop()
 		end)
@@ -56,14 +54,11 @@ end
 
 -- Handles MapEffectStarted event from server
 local function OnMapEffectStarted(data)
-	local mapId = data.mapId
-	local startServerTime = data.startServerTime
-
 	-- Stop any existing effects
 	StopActiveModule()
 
 	-- Try to load the per-map effect module
-	local effectModule = TryLoadMapEffectModule(mapId)
+	local effectModule = TryLoadMapEffectModule(data.mapId)
 	if not effectModule then
 		return
 	end
@@ -77,10 +72,10 @@ local function OnMapEffectStarted(data)
 
 	-- Start the effect module
 	_ActiveModule = effectModule
-	_ActiveMapId = mapId
+	_ActiveMapId = data.mapId
 
 	local success, err = pcall(function()
-		effectModule:Start(mapInstance, startServerTime)
+		effectModule:Start(mapInstance, data.startServerTime)
 	end)
 
 	if not success then
@@ -96,11 +91,12 @@ local function OnMapEffectStopped(mapId)
 		StopActiveModule()
 	end
 end
+
 -- API Functions --
 -- Initializers --
 function MapEffectsController:Init()
-	table.insert(_Connections, MapEffectStartedEvent.OnClientEvent:Connect(OnMapEffectStarted))
-	table.insert(_Connections, MapEffectStoppedEvent.OnClientEvent:Connect(OnMapEffectStopped))
+	MapEffectStartedEvent.OnClientEvent:Connect(OnMapEffectStarted)
+	MapEffectStoppedEvent.OnClientEvent:Connect(OnMapEffectStopped)
 end
 
 -- Return Module --
