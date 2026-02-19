@@ -1,5 +1,5 @@
 return {
-	_VERSION = 6,
+	_VERSION = 7,
 
 	Collections = {
 		Currencies = {
@@ -16,6 +16,9 @@ return {
 			LiriliLarila_Normal = 1,
 			TalpaDiFero_Normal = 1,
 		},
+		Arrows = {
+			Default = 1, -- Default arrow owned
+		},
 	},
 
 	Skins = {
@@ -30,6 +33,10 @@ return {
 	Auras = {
 		Equipped = nil, -- Currently equipped aura ID (nil = none)
 		Unlocked = {}, -- Array of unlocked aura IDs
+	},
+
+	Arrows = {
+		Equipped = "Default", -- Currently equipped arrow ID
 	},
 
 	Rank = {
