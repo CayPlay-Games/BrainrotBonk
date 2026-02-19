@@ -64,7 +64,7 @@ return TableHelper:DeepFreeze({
 	PHYSICS_BOX_SIZE = Vector3.new(3.5, 5, 3.5), -- Size of the cube
 	PHYSICS_BOX_DENSITY = 25, -- Higher density for heavier, more substantial feel
 	PHYSICS_BOX_FRICTION = 0.05, -- Low friction on player boxes
-	PHYSICS_BOX_ELASTICITY = 0.6, -- Lower elasticity for less bouncy collisions
+	PHYSICS_BOX_ELASTICITY = 0.0, -- Lower elasticity for less bouncy collisions
 	PHYSICS_BOX_COLOR = Color3.fromRGB(255, 255, 255), -- Default white (skin covers it)
 
 	-- Lobby settings
