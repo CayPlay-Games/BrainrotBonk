@@ -157,6 +157,7 @@ local function UpdateSkinPreview(skinId, mutation)
 	if rarity then
 		_RarityLabel.Text = rarity.Name
 		_RarityLabel.TextColor3 = rarity.Color
+		_RarityLabel.Visible = true
 		_PreviewPanel.BackgroundColor3 = rarity.Color
 	end
 
@@ -192,6 +193,11 @@ local function UpdateArrowPreview(arrowId)
 	-- Hide mutation label for arrows
 	if _MutationLabel then
 		_MutationLabel.Visible = false
+	end
+
+	-- Hide rarity label for arrows (arrows don't have rarities)
+	if _RarityLabel then
+		_RarityLabel.Visible = false
 	end
 
 	-- Update preview image
@@ -515,7 +521,6 @@ local function SetupUI(screenGui)
 	if _Sidebar then
 		_SkinsTabButton = _Sidebar:FindFirstChild("Skins")
 		_ArrowsTabButton = _Sidebar:FindFirstChild("ArrowsTab")
-		print("[SkinsWindowController] Found Sidebar, SkinsTab:", _SkinsTabButton, "ArrowsTab:", _ArrowsTabButton)
 
 		-- Tab click handlers
 		if _SkinsTabButton then

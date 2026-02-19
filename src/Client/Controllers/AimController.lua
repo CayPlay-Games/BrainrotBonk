@@ -52,6 +52,7 @@ local _RenderConnection = nil
 local _AimTimerThread = nil
 local _HasSubmittedAim = false
 local _IsAimLocked = false
+local _CachedArrowTemplate = nil -- Cached to avoid per-frame lookups
 
 -- Internal Functions --
 
@@ -163,12 +164,13 @@ local function CreateAimArrow()
 
 	local character = LocalPlayer.Character
 	local equippedArrow = GetLocalPlayerEquippedArrow()
+	_CachedArrowTemplate = GetArrowTemplate(equippedArrow) -- Cache for UpdateAimArrow
 	_AimArrow = CreateArrowForCharacter(character, equippedArrow)
 end
 
 -- Updates the arrow position and rotation to match aim direction
 local function UpdateAimArrow()
-	if not _AimArrow then
+	if not _AimArrow or not _CachedArrowTemplate then
 		return
 	end
 
@@ -182,16 +184,13 @@ local function UpdateAimArrow()
 		return
 	end
 
-	local equippedArrow = GetLocalPlayerEquippedArrow()
-	local template = GetArrowTemplate(equippedArrow)
-
 	-- Calculate scale based on power (X direction)
 	local powerRatio = (_CurrentPower - RoundConfig.AIM_POWER_MIN)
 		/ (RoundConfig.AIM_POWER_MAX - RoundConfig.AIM_POWER_MIN)
 	local scaleX = ARROW_BASE_SCALE_X + powerRatio * (ARROW_MAX_SCALE_X - ARROW_BASE_SCALE_X)
 
-	-- Calculate arrow size
-	local baseSize = template.Size * ARROW_SIZE_MULTIPLIER
+	-- Calculate arrow size (using cached template)
+	local baseSize = _CachedArrowTemplate.Size * ARROW_SIZE_MULTIPLIER
 	local arrowSizeX = baseSize.X * scaleX
 	_AimArrow.Size = Vector3.new(arrowSizeX, baseSize.Y, baseSize.Z)
 
@@ -212,6 +211,7 @@ local function DestroyAimArrow()
 		_AimArrow:Destroy()
 		_AimArrow = nil
 	end
+	_CachedArrowTemplate = nil
 end
 
 -- Updates aim direction based on camera look direction
