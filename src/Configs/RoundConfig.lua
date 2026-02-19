@@ -40,7 +40,7 @@ return TableHelper:DeepFreeze({
 	AIM_POWER_MIN = 1,
 	AIM_POWER_MAX = 10,
 	DEFAULT_AIM_DIRECTION = Vector3.new(0, 0, 1), -- Forward
-	DEFAULT_AIM_POWER = 5,
+	DEFAULT_AIM_POWER = 3,
 	AIM_SUBMIT_GRACE_PERIOD = 1, -- Seconds to wait for aim submissions after timer ends
 
 	-- Launch physics
