@@ -33,6 +33,7 @@ local RankService = shared("RankService")
 local MapService = shared("MapService")
 local MapsConfig = shared("MapsConfig")
 local SkinService = shared("SkinService")
+local AimService = shared("AimService")
 local PickMapService = shared("PickMapService")
 local PhysicsService = shared("PhysicsService")
 local QuestService = shared("QuestService")
@@ -814,9 +815,16 @@ local function EnterRevealing()
 	local revealedAims = {}
 	for player, aim in pairs(_SubmittedAims) do
 		if _AlivePlayers[player] then
+			-- Get arrow ID (only for real players, dummies use default)
+			local arrowId = nil
+			if typeof(player) == "Instance" and player:IsA("Player") then
+				arrowId = AimService:GetPlayerArrow(player)
+			end
+
 			revealedAims[tostring(player.UserId)] = {
 				Direction = { X = aim.Direction.X, Y = aim.Direction.Y, Z = aim.Direction.Z },
 				Power = aim.Power,
+				ArrowId = arrowId,
 			}
 
 			-- Tween player to face their aim direction (while still anchored)
