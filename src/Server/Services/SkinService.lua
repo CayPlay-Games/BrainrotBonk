@@ -21,6 +21,7 @@ local RoundConfig = shared("RoundConfig")
 local SkinsConfig = shared("SkinsConfig")
 local DataStream = shared("DataStream")
 local GetRemoteEvent = shared("GetRemoteEvent")
+local ModelHelper = shared("ModelHelper")
 
 -- Remote Events --
 local EquipSkinRemoteEvent = GetRemoteEvent("EquipSkin")
@@ -273,7 +274,7 @@ function SkinService:RestoreOriginalCharacter(player)
 
 	-- Move to lobby position
 	if newHRP then
-		newHRP.CFrame = CFrame.new(RoundConfig.LOBBY_SPAWN_POSITION)
+		ModelHelper:SendPlayerToLobby(player)
 	end
 
 	_OriginalDescriptions[player] = nil

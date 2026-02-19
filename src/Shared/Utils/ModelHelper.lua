@@ -1,3 +1,5 @@
+local RoundConfig = shared("RoundConfig")
+
 local ModelHelper = {}
 
 function ModelHelper:PivotToBottomOfPart(Model, TargetPart)
@@ -20,4 +22,15 @@ function ModelHelper:GetTotalMass(Model)
 	return TotalMass
 end
 
+function ModelHelper:SendPlayerToLobby(Player)
+	if Player and Player.Character then
+		-- Get the offset from lobby spawn
+		local randomOffset = Vector3.new(
+			math.random(-RoundConfig.LOBBY_SPAWN_SIZE.X / 2, RoundConfig.LOBBY_SPAWN_SIZE.X / 2),
+			0,
+			math.random(-RoundConfig.LOBBY_SPAWN_SIZE.Z / 2, RoundConfig.LOBBY_SPAWN_SIZE.Z / 2)
+		)
+		Player.Character:PivotTo(CFrame.new(RoundConfig.LOBBY_SPAWN_POSITION + randomOffset))
+	end
+end
 return ModelHelper

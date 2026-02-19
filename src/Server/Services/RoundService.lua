@@ -39,6 +39,7 @@ local PhysicsService = shared("PhysicsService")
 local QuestService = shared("QuestService")
 local LeaderboardService = shared("LeaderboardService")
 local ModifierService = shared("ModifierService")
+local ModelHelper = shared("ModelHelper")
 
 -- Object References --
 local SubmitAimRemoteEvent = GetRemoteEvent("SubmitAim")
@@ -392,7 +393,7 @@ local function TeleportToLobby(player)
 		-- Clear any velocity from the round
 		hrp.AssemblyLinearVelocity = Vector3.zero
 		hrp.AssemblyAngularVelocity = Vector3.zero
-		hrp.CFrame = CFrame.new(RoundConfig.LOBBY_SPAWN_POSITION)
+		ModelHelper:SendPlayerToLobby(player)
 	end
 end
 
@@ -655,6 +656,15 @@ local function EnterSpawning()
 
 	-- Initialize round players
 	for i, player in ipairs(allPlayers) do
+		-- Validate player has a valid, alive character before adding to round
+		-- This prevents players who died during countdown (e.g., doing obby) from joining
+		local character = player.Character
+		local humanoid = character and character:FindFirstChild("Humanoid")
+		if not humanoid or humanoid.Health <= 0 then
+			DebugLog(player.DisplayName, "is dead or respawning, skipping spawn")
+			continue
+		end
+
 		_RoundPlayers[player] = {
 			IsAlive = true,
 			EliminatedBy = nil,
