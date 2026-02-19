@@ -9,9 +9,6 @@
 -- Root --
 local SkinShopWindowController = {}
 
--- Roblox Services --
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
 -- Dependencies --
 local OnLocalPlayerStoredDataStreamLoaded = shared("OnLocalPlayerStoredDataStreamLoaded")
 local UIController = shared("UIController")
@@ -19,13 +16,8 @@ local SkinBoxesConfig = shared("SkinBoxesConfig")
 local SkinsConfig = shared("SkinsConfig")
 local GetRemoteEvent = shared("GetRemoteEvent")
 local RoundConfig = shared("RoundConfig")
-local ViewportHelper = shared("ViewportHelper")
-
 -- Remote Events --
 local PurchaseSkinBoxRemoteEvent = GetRemoteEvent("PurchaseSkinBox")
-
--- Object References --
-local SkinsFolder = nil
 
 -- Private Variables --
 local _ScreenGui = nil
@@ -42,66 +34,6 @@ local function DebugLog(...)
 	if RoundConfig.DEBUG_LOG_STATE_CHANGES then
 		print("[SkinShopWindowController]", ...)
 	end
-end
-
--- Creates a viewport camera for skin preview
-local function SetupViewportCamera(viewport)
-	local camera = viewport:FindFirstChildOfClass("Camera")
-	if not camera then
-		camera = Instance.new("Camera")
-		camera.FieldOfView = 50
-		camera.Parent = viewport
-		viewport.CurrentCamera = camera
-	end
-	return camera
-end
-
--- Displays a skin model in a viewport
-local function DisplaySkinInViewport(viewport, skinId, mutation)
-	-- Clear existing models
-	for _, child in viewport:GetChildren() do
-		if child:IsA("Model") then
-			child:Destroy()
-		end
-	end
-
-	mutation = mutation or "Normal"
-
-	-- Get skin config and model
-	local skinConfig = SkinsConfig.Skins[skinId]
-	if not skinConfig then
-		DebugLog("Skin not found in SkinsConfig:", skinId)
-		return nil
-	end
-
-	-- Try nested structure: Skins/Fluriflura/Normal
-	local skinFolder = SkinsFolder:FindFirstChild(skinConfig.ModelName)
-	local previewModel = nil
-
-	if skinFolder and skinFolder:IsA("Folder") then
-		-- Look for mutation-specific model
-		previewModel = skinFolder:FindFirstChild(mutation)
-
-		-- Fallback to Normal if mutation not found
-		if not previewModel and mutation ~= "Normal" then
-			previewModel = skinFolder:FindFirstChild("Normal")
-		end
-	end
-
-	-- Legacy fallback: flat structure
-	if not previewModel then
-		previewModel = SkinsFolder:FindFirstChild(skinConfig.ModelName)
-	end
-
-	if not previewModel then
-		DebugLog("Skin model not found:", skinConfig.ModelName)
-		return nil
-	end
-
-	-- Setup camera and display model
-	local camera = SetupViewportCamera(viewport)
-	local clone = ViewportHelper.DisplayModel(viewport, previewModel, camera)
-	return clone
 end
 
 -- Creates a skin preview card for a box's SkinsScroll
@@ -134,11 +66,11 @@ local function CreateSkinPreviewCard(skinEntry, boxId, skinTemplate, skinsScroll
 		end
 	end
 
-	-- Setup viewport with skin model (ViewportFrame is inside SkinModel)
-	local skinModel = card:FindFirstChild("SkinModel")
-	local viewport = skinModel and skinModel:FindFirstChild("ViewportFrame") or card:FindFirstChild("ViewportFrame")
-	if viewport then
-		DisplaySkinInViewport(viewport, skinId, "Normal")
+	-- Setup skin icon
+	local skinPreview = card:FindFirstChild("SkinPreview")
+	local icon = skinPreview and skinPreview:FindFirstChild("Icon")
+	if icon and skinConfig and skinConfig.Icon then
+		icon.Image = skinConfig.Icon
 	end
 
 	card.Parent = skinsScroll
@@ -198,7 +130,7 @@ local function CreateBoxCard(boxId, boxConfig)
 	card.Visible = true
 	card.LayoutOrder = boxConfig.LayoutOrder or 1
 
-	DebugLog("Creating box card:", boxId, "DisplayName:", boxConfig.DisplayName, "Tier:", boxConfig.Tier)
+	DebugLog("Creating box card:", boxId, "DisplayName:", boxConfig.DisplayName)
 
 	local inner = card:FindFirstChild("Inner")
 	if not inner then
@@ -209,23 +141,12 @@ local function CreateBoxCard(boxId, boxConfig)
 	-- Setup TopRow elements
 	local topRow = inner:FindFirstChild("TopRow")
 	if topRow then
-		-- Tier badge (inside BoxPreview)
+		-- Update block image
 		local boxPreview = topRow:FindFirstChild("BoxPreview")
-		if boxPreview then
-			local tierBadge = boxPreview:FindFirstChild("TierBadge")
-			if tierBadge then
-				local tierLabel = tierBadge:FindFirstChild("TierLabel")
-				if tierLabel then
-					tierLabel.Text = "Tier " .. boxConfig.Tier
-					DebugLog("Set tier to:", tierLabel.Text)
-				else
-					DebugLog("TierLabel not found in TierBadge")
-				end
-			else
-				DebugLog("TierBadge not found in BoxPreview")
-			end
-		else
-			DebugLog("BoxPreview not found in TopRow")
+		local blockImage = boxPreview and boxPreview:FindFirstChild("BlockImage")
+		local ImageLabel = blockImage and blockImage:FindFirstChildOfClass("ImageLabel")
+		if ImageLabel then
+			ImageLabel.Image = boxConfig.Icon or "rbxassetid://136117318813027"
 		end
 
 		-- Skins scroll
@@ -327,8 +248,6 @@ end
 -- Sets up UI references
 local function SetupUI(screenGui)
 	if _IsSetup then return end
-
-	SkinsFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Skins")
 
 	_ScreenGui = screenGui
 	local mainFrame = _ScreenGui:WaitForChild("MainFrame")

@@ -19,7 +19,6 @@ local GetRemoteEvent = shared("GetRemoteEvent")
 local UIController = shared("UIController")
 local SkinBoxesConfig = shared("SkinBoxesConfig")
 local SkinsConfig = shared("SkinsConfig")
-local RoundConfig = shared("RoundConfig")
 local ViewportHelper = shared("ViewportHelper")
 
 -- Remote Events --
