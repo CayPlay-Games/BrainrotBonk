@@ -14,6 +14,7 @@ return TableHelper:DeepFreeze({
 		ElectroTub = {
 			DisplayName = "Electro Tub",
 			GameMode = "Classic",
+			DeathEffectId = "ElectroTub",
 		},
 		Castle = {
 			DisplayName = "Castle",
@@ -30,6 +31,7 @@ return TableHelper:DeepFreeze({
 		SaladSpinner = {
 			DisplayName = "Salad Spinner",
 			GameMode = "DeathMatch",
+			DeathEffectId = "SaladSpinner",
 		},
 		SoupPot = {
 			DisplayName = "Soup Pot",
