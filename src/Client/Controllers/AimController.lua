@@ -39,7 +39,7 @@ local ARROW_BASE_SCALE_X = 1 -- Base X scale at minimum power
 local ARROW_MAX_SCALE_X = 3 -- Max X scale at maximum power
 local ARROW_OFFSET_DISTANCE = 2 -- Distance from HRP to arrow base
 local ARROW_SIZE_MULTIPLIER = 0.4 -- 60% smaller than original
-local ARROW_ROTATION_OFFSET = CFrame.Angles(0, math.rad(-90), 0) -- Rotate to face correct direction
+local ARROW_ROTATION_OFFSET = CFrame.Angles(0, math.rad(-270), 0) -- Rotate to face correct direction
 
 -- Private Variables --
 local _IsAiming = false
