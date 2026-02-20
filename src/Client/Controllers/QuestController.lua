@@ -174,11 +174,11 @@ end
 
 local function _UpdateTopTabVisuals()
 	if _DailyTab then
-		_DailyTab.ImageColor3 = (_SelectedTab == "Daily") and Color3.fromRGB(255, 255, 255)
+		_DailyTab.Background.BackgroundColor3 = (_SelectedTab == "Daily") and Color3.fromRGB(255, 255, 255)
 			or Color3.fromRGB(150, 150, 150)
 	end
 	if _WeeklyTab then
-		_WeeklyTab.ImageColor3 = (_SelectedTab == "Weekly") and Color3.fromRGB(255, 255, 255)
+		_WeeklyTab.Background.BackgroundColor3 = (_SelectedTab == "Weekly") and Color3.fromRGB(255, 255, 255)
 			or Color3.fromRGB(150, 150, 150)
 	end
 end
@@ -264,11 +264,16 @@ local function _PopulateQuestEntries()
 			local isClaimed = quest.IsClaimed == true
 
 			if claimButton and claimButton:IsA("GuiButton") then
-				_SetLabelText(claimButton, isClaimed and "CLAIMED" or "CLAIM!")
-				claimButton.ImageColor3 = (isClaimable or isClaimed) and Color3.fromRGB(255, 255, 255)
+				if not isClaimed and not isClaimable then
+					_SetLabelText(claimButton.TextLabel, "IN PROGRESS")
+				else
+					_SetLabelText(claimButton.TextLabel, isClaimed and "CLAIMED" or "CLAIM!")
+				end
+
+				claimButton.Background.BackgroundColor3 = isClaimable and Color3.fromRGB(255, 255, 255)
 					or Color3.fromRGB(150, 150, 150)
 				claimButton.Active = isClaimable
-				claimButton.AutoButtonColor = isClaimable
+
 				claimButton.MouseButton1Click:Connect(function()
 					if isClaimable then
 						QuestController:RequestClaim(quest.Id)
