@@ -67,6 +67,7 @@ local STATE_REVEALING = "Revealing"
 -- Private Variables --
 local _ScreenGui, _Background, _CrateContainer, _Icon, _ClickPrompt
 local _RouletteContainer, _SkinViewport, _SkinName, _ClosePrompt
+local _Results, _ResultsNew, _ResultsDuplicate, _ResultsRefund
 local _SkinsFolder
 local _CurrentState = STATE_IDLE
 local _PendingResult = nil
@@ -382,6 +383,17 @@ RevealWinner = function(skinId, model, originalTextures, distance)
 		_SkinName.Text = skinId
 	end
 
+	-- Show results
+	if _PendingResult and _PendingResult.IsNew then
+		_ResultsNew.Visible = true
+		_ResultsDuplicate.Visible = false
+	elseif _PendingResult then
+		_ResultsNew.Visible = false
+		_ResultsDuplicate.Visible = true
+		_ResultsRefund.Text = "+" .. tostring(_PendingResult.RefundAmount)
+	end
+	_Results.Visible = true
+
 	_ClosePrompt.Visible = true
 	_ClosePrompt.Text = "Click to close"
 
@@ -404,13 +416,13 @@ WaitForClick = function(callback)
 end
 
 -- Show/Close --
-local function ShowCrateOpening(boxId, resultSkinId, resultMutation)
+local function ShowCrateOpening(boxId, resultSkinId, resultMutation, isNew, refundAmount)
 	if not _IsSetup then
 		return
 	end
 
 	_CurrentState = STATE_WAITING_CLICK
-	_PendingResult = { BoxId = boxId, SkinId = resultSkinId, Mutation = resultMutation }
+	_PendingResult = { BoxId = boxId, SkinId = resultSkinId, Mutation = resultMutation, IsNew = isNew, RefundAmount = refundAmount or 0 }
 
 	UIController:CloseAllWindows()
 	UIController:ShowOverlay()
@@ -420,6 +432,9 @@ local function ShowCrateOpening(boxId, resultSkinId, resultMutation)
 	_CrateContainer.Visible = true
 	_RouletteContainer.Visible = false
 	_ClosePrompt.Visible = false
+	_Results.Visible = false
+	_ResultsNew.Visible = false
+	_ResultsDuplicate.Visible = false
 
 	ViewportHelper.Clear(_SkinViewport)
 
@@ -471,6 +486,7 @@ Close = function()
 	_CrateContainer.Visible = false
 	_RouletteContainer.Visible = false
 	_ClosePrompt.Visible = false
+	_Results.Visible = false
 
 	_Icon.Image = ""
 	ViewportHelper.Clear(_SkinViewport)
@@ -494,6 +510,10 @@ local function SetupUI(screenGui)
 	_SkinViewport = _RouletteContainer:WaitForChild("SkinViewport")
 	_SkinName = _RouletteContainer:WaitForChild("SkinName")
 	_ClosePrompt = _ScreenGui:WaitForChild("ClosePrompt")
+	_Results = _ScreenGui:WaitForChild("Results")
+	_ResultsNew = _Results:WaitForChild("New")
+	_ResultsDuplicate = _Results:WaitForChild("Duplicate")
+	_ResultsRefund = _ResultsDuplicate:WaitForChild("Refund")
 
 	ViewportHelper.GetCamera(_SkinViewport)
 
@@ -501,8 +521,8 @@ local function SetupUI(screenGui)
 end
 
 -- Public API --
-function CrateOpeningController:Show(boxId, resultSkinId, resultMutation)
-	ShowCrateOpening(boxId, resultSkinId, resultMutation)
+function CrateOpeningController:Show(boxId, resultSkinId, resultMutation, isNew, refundAmount)
+	ShowCrateOpening(boxId, resultSkinId, resultMutation, isNew, refundAmount)
 end
 
 function CrateOpeningController:Close()
@@ -520,7 +540,7 @@ function CrateOpeningController:Init()
 
 		SkinBoxResultRemoteEvent.OnClientEvent:Connect(function(result)
 			if result.Success then
-				ShowCrateOpening(result.BoxId, result.SkinId, result.Mutation)
+				ShowCrateOpening(result.BoxId, result.SkinId, result.Mutation, result.IsNew, result.RefundAmount)
 			else
 				warn("[CrateOpeningController] Purchase failed:", result.Reason)
 			end

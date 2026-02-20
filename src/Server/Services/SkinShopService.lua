@@ -10,9 +10,6 @@
 local SkinShopService = {}
 
 -- Roblox Services --
-local Players = game:GetService("Players")
-local MarketplaceService = game:GetService("MarketplaceService")
-
 -- Dependencies --
 local DataStream = shared("DataStream")
 local SkinBoxesConfig = shared("SkinBoxesConfig")
@@ -34,23 +31,6 @@ local function DebugLog(...)
 	if RoundConfig.DEBUG_LOG_STATE_CHANGES then
 		print("[SkinShopService]", ...)
 	end
-end
-
--- Checks if player can afford a box with the given currency
-local function CanAfford(player, boxId, currencyType)
-	local box = SkinBoxesConfig.Boxes[boxId]
-	if not box then return false end
-
-	if currencyType == "Coins" then
-		local stored = DataStream.Stored[player]
-		if not stored then return false end
-
-		local coins = stored.Collections.Currencies.Coins:Read() or 0
-		return coins >= box.CoinsPrice
-	end
-
-	-- Robux is handled by MarketplaceService
-	return true
 end
 
 -- Awards a skin + mutation to the player using Collections
@@ -149,11 +129,25 @@ local function HandleCoinPurchase(player, boxId)
 
 	-- Award skin with mutation
 	local isNewSkin, isNewMutation = AwardSkin(player, skinId, mutation)
+	local isNew = isNewSkin or isNewMutation
+	local refundAmount = 0
+
+	-- Refund half the cost if duplicate
+	if not isNew then
+		refundAmount = math.floor(box.CoinsPrice / 2)
+		CollectionsService:GiveCurrency(
+			player,
+			CURRENCY_ID,
+			refundAmount,
+			Enum.AnalyticsEconomyTransactionType.Shop.Name,
+			"SkinBox_" .. boxId .. "_DuplicateRefund"
+		)
+	end
 
 	local statusText = isNewSkin and "(NEW SKIN!)" or (isNewMutation and "(NEW MUTATION!)" or "(duplicate)")
 	print("[SkinShopService]", player.Name, "rolled", skinId, mutation, "from", boxId, statusText)
 
-	return true, skinId, mutation
+	return true, skinId, mutation, isNew, refundAmount
 end
 
 -- Handles purchase request from client
@@ -175,7 +169,7 @@ local function OnPurchaseRequest(player, boxId, currencyType)
 
 	if currencyType == "Coins" then
 		-- Handle coin purchase directly
-		local success, skinId, mutation = HandleCoinPurchase(player, boxId)
+		local success, skinId, mutation, isNew, refundAmount = HandleCoinPurchase(player, boxId)
 
 		-- Notify client of result (for future animation)
 		if success and skinId then
@@ -184,6 +178,8 @@ local function OnPurchaseRequest(player, boxId, currencyType)
 				BoxId = boxId,
 				SkinId = skinId,
 				Mutation = mutation,
+				IsNew = isNew,
+				RefundAmount = refundAmount or 0,
 			})
 		else
 			SkinBoxResultRemoteEvent:FireClient(player, {
