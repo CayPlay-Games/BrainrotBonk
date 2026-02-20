@@ -234,6 +234,20 @@ local function PopulateBoxes()
 		end
 	end
 
+	-- Calculate canvas size based on box count
+	local boxCount = 0
+	for _ in pairs(_BoxCards) do
+		boxCount = boxCount + 1
+	end
+
+	if _BoxTemplate and boxCount > 0 then
+		local listLayout = _SkinBlocks:FindFirstChildOfClass("UIListLayout")
+		local padding = listLayout and listLayout.Padding.Offset or 0
+		local cardHeight = _BoxTemplate.Size.Y.Scale + (_BoxTemplate.Size.Y.Offset / _SkinBlocks.AbsoluteSize.Y)
+		local totalScale = boxCount * cardHeight + ((boxCount - 1) * padding / _SkinBlocks.AbsoluteSize.Y)
+		_SkinBlocks.CanvasSize = UDim2.new(0, 0, totalScale, 0)
+	end
+
 	DebugLog("Populated", #_BoxCards, "skin boxes")
 end
 
