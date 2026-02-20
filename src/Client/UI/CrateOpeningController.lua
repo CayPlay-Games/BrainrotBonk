@@ -72,6 +72,8 @@ local _CurrentState = STATE_IDLE
 local _PendingResult = nil
 local _ClickConnection = nil
 local _RotationConnection = nil
+local _SkipConnection = nil
+local _SkipRequested = false
 local _WinnerModel = nil
 local _IsSetup = false
 
@@ -249,8 +251,48 @@ local function PlayRouletteAnimation(boxId, resultSkinId, resultMutation)
 		end
 	end
 
+	-- Set up skip detection
+	_SkipRequested = false
+	_SkipConnection = _Background.MouseButton1Click:Connect(function()
+		_SkipRequested = true
+	end)
+
+	-- Helper to clean up and reveal
+	local function skipToReveal()
+		if _SkipConnection then
+			_SkipConnection:Disconnect()
+			_SkipConnection = nil
+		end
+
+		local winnerModel = cachedModels[resultIndex]
+		if winnerModel then
+			-- Show only winner model at full scale
+			for _, model in pairs(cachedModels) do
+				model.Parent = nil
+			end
+			winnerModel.Parent = _SkinViewport
+			winnerModel:PivotTo(CFrame.new(0, 0, -cachedDistances[resultIndex]))
+			ScaleModel(winnerModel, SCALE_MAX)
+
+			-- Clean up non-winner models
+			for idx, model in pairs(cachedModels) do
+				if idx ~= resultIndex then
+					model:Destroy()
+				end
+			end
+
+			RevealWinner(resultSkinId, winnerModel, cachedTextures[resultIndex], cachedDistances[resultIndex])
+		end
+	end
+
 	-- Animation loop
 	for i = 1, totalCycles do
+		-- Check for skip request
+		if _SkipRequested then
+			skipToReveal()
+			return
+		end
+
 		local isFinal = (i == totalCycles)
 		local showIndex = isFinal and resultIndex or ((i - 1) % skinCount) + 1
 		local previewModel = cachedModels[showIndex]
@@ -271,12 +313,20 @@ local function PlayRouletteAnimation(boxId, resultSkinId, resultMutation)
 
 		-- Scale up
 		for step = 1, steps do
+			if _SkipRequested then
+				skipToReveal()
+				return
+			end
 			local t = step / steps
 			ScaleModel(previewModel, SCALE_MIN + (SCALE_MAX - SCALE_MIN) * t)
 			task.wait(scaleTime / steps)
 		end
 
 		if isFinal then
+			if _SkipConnection then
+				_SkipConnection:Disconnect()
+				_SkipConnection = nil
+			end
 			task.wait(1)
 			for idx, model in pairs(cachedModels) do
 				if idx ~= resultIndex then
@@ -288,6 +338,10 @@ local function PlayRouletteAnimation(boxId, resultSkinId, resultMutation)
 		else
 			-- Scale down
 			for step = 1, steps do
+				if _SkipRequested then
+					skipToReveal()
+					return
+				end
 				local t = step / steps
 				ScaleModel(previewModel, SCALE_MAX - (SCALE_MAX - SCALE_MIN) * t)
 				task.wait(scaleTime / steps)
@@ -393,10 +447,16 @@ Close = function()
 	_CurrentState = STATE_IDLE
 	_PendingResult = nil
 	_WinnerModel = nil
+	_SkipRequested = false
 
 	if _ClickConnection then
 		_ClickConnection:Disconnect()
 		_ClickConnection = nil
+	end
+
+	if _SkipConnection then
+		_SkipConnection:Disconnect()
+		_SkipConnection = nil
 	end
 
 	if _RotationConnection then
