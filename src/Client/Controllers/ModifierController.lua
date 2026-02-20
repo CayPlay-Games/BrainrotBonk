@@ -29,6 +29,7 @@ local ArrowResolveEvent = GetRemoteEvent("ArrowResolve")
 local _Connections = {}
 local _CurrentController = nil
 local _CurrentModifierId = nil
+local _CachedRoundState = nil
 
 -- Internal Functions --
 -- Dynamically loads a modifier controller module
@@ -94,12 +95,30 @@ end
 function ModifierController:Init()
 	-- Meteor Shower events
 	table.insert(_Connections, MeteorWarningEvent.OnClientEvent:Connect(function(targetPositions, impactRadius)
+		-- Auto-activate for meteor events if not already active
+		if not _CurrentController or _CurrentModifierId ~= "MeteorShower" then
+			local mapInstance = nil
+			pcall(function()
+				local mapName = _CachedRoundState and _CachedRoundState.MapName:Get()
+				mapInstance = mapName and Workspace:FindFirstChild(mapName)
+			end)
+			ActivateModifier("MeteorShower", mapInstance)
+		end
 		if _CurrentController and _CurrentModifierId == "MeteorShower" then
 			_CurrentController:OnWarning(targetPositions, impactRadius)
 		end
 	end))
 
 	table.insert(_Connections, MeteorResolveEvent.OnClientEvent:Connect(function(meteorInterval, travelTime)
+		-- Auto-activate for meteor events if not already active (safety check)
+		if not _CurrentController or _CurrentModifierId ~= "MeteorShower" then
+			local mapInstance = nil
+			pcall(function()
+				local mapName = _CachedRoundState and _CachedRoundState.MapName:Get()
+				mapInstance = mapName and Workspace:FindFirstChild(mapName)
+			end)
+			ActivateModifier("MeteorShower", mapInstance)
+		end
 		if _CurrentController and _CurrentModifierId == "MeteorShower" then
 			_CurrentController:OnResolve(meteorInterval, travelTime)
 		end
@@ -126,6 +145,7 @@ function ModifierController:Init()
 
 	-- Listen for round state changes to manage modifier lifecycle
 	PromiseWaitForDataStream(ClientDataStream.RoundState):andThen(function(roundState)
+		_CachedRoundState = roundState
 		-- Listen for modifier changes
 		table.insert(_Connections, roundState.ModifierData:Changed(function(modifierData)
 			if modifierData and modifierData.ModifierId then
