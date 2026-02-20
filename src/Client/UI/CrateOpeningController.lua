@@ -21,6 +21,7 @@ local SkinBoxesConfig = shared("SkinBoxesConfig")
 local SkinsConfig = shared("SkinsConfig")
 local ViewportHelper = shared("ViewportHelper")
 local SoundController = shared("SoundController")
+local ModelHelper = shared("ModelHelper")
 
 -- Remote Events --
 local SkinBoxResultRemoteEvent = GetRemoteEvent("SkinBoxResult")
@@ -56,9 +57,6 @@ local HYPE_COLORS = {
 	Color3.fromRGB(100, 200, 255),
 }
 
--- Blackout Constants --
-local BLACK_TEXTURE = "http://www.roblox.com/asset/?id=1179108570"
-
 -- State Machine --
 local STATE_IDLE = "Idle"
 local STATE_WAITING_CLICK = "WaitingClick"
@@ -81,26 +79,6 @@ local _IsSetup = false
 
 -- Forward Declarations --
 local Close, WaitForClick, RevealWinner
-
--- Blackout/Restore Textures --
-local function BlackoutModel(model)
-	local originalTextures = {}
-	for _, part in model:GetDescendants() do
-		if part:IsA("MeshPart") and part.TextureID ~= "" then
-			originalTextures[part] = part.TextureID
-			part.TextureID = BLACK_TEXTURE
-		end
-	end
-	return originalTextures
-end
-
-local function RestoreModelTextures(originalTextures)
-	for part, textureId in pairs(originalTextures) do
-		if part and part.Parent then
-			part.TextureID = textureId
-		end
-	end
-end
 
 -- Confetti Effect --
 local function SpawnConfetti(parent)
@@ -247,7 +225,7 @@ local function PlayRouletteAnimation(boxId, resultSkinId, resultMutation)
 			local clone = skinModel:Clone()
 			clone.Parent = _SkinViewport
 			cachedDistances[index] = ViewportHelper.CalculateDistance(clone, camera.FieldOfView)
-			cachedTextures[index] = BlackoutModel(clone)
+			cachedTextures[index] = ModelHelper:BlackoutModel(clone)
 			ScaleModel(clone, SCALE_MIN)
 			cachedModels[index] = clone
 		end
@@ -361,7 +339,7 @@ RevealWinner = function(skinId, model, originalTextures, distance)
 	_WinnerModel = model
 
 	if originalTextures then
-		RestoreModelTextures(originalTextures)
+		ModelHelper:RestoreTextures(originalTextures)
 	end
 
 	SoundController:PlaySound("SFX", "LuckyBlockReveal")

@@ -40,6 +40,7 @@ local QuestService = shared("QuestService")
 local LeaderboardService = shared("LeaderboardService")
 local ModifierService = shared("ModifierService")
 local ModelHelper = shared("ModelHelper")
+local DeathEffectsService = shared("DeathEffectsService")
 
 -- Object References --
 local SubmitAimRemoteEvent = GetRemoteEvent("SubmitAim")
@@ -1279,10 +1280,21 @@ function RoundService:EliminatePlayer(player, eliminatedBy)
 		end
 	end
 
-	-- Restore original character or cleanup dummy
-	if type(player) == "table" and player.IsDummy then
+	-- Play death effect, then restore original character or cleanup dummy
+	local isDummy = type(player) == "table" and player.IsDummy
+
+	if isDummy then
 		CleanupDummy(player)
+	elseif character and character:FindFirstChild("HumanoidRootPart") then
+		-- Play death effect before restoration
+		DeathEffectsService:PlayDeathEffect(player, character):andThen(function()
+			-- Check player is still valid before restoring
+			if player.Parent then
+				SkinService:RestoreOriginalCharacter(player)
+			end
+		end)
 	else
+		-- No physics box (player already respawning), skip effect
 		SkinService:RestoreOriginalCharacter(player)
 	end
 
