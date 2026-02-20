@@ -24,7 +24,7 @@ return TableHelper:DeepFreeze({
 			GameMode = "DeathMatch",
 			Modifier = {
 				Id = "MeteorShower",
-				Chance = 1.0, -- 100% chance for testing, adjust later
+				Chance = 1.0,
 			},
 		},
 		SaladSpinner = {
@@ -45,6 +45,14 @@ return TableHelper:DeepFreeze({
 		},
 		JungleTemple = {
 			DisplayName = "Jungle Temple",
+			GameMode = "DeathMatch",
+			Modifier = {
+				Id = "ArrowTrap",
+				Chance = 1,
+			},
+		},
+		OuterSpace = {
+			DisplayName = "Outer Space",
 			GameMode = "Classic",
 		},
 	},

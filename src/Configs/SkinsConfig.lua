@@ -115,7 +115,6 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://86348273989347",
 				Walk = "rbxassetid://106404853990555",
 			},
-			
 		},
 		TalpaDiFero = {
 			DisplayName = "Talpa Di Fero",

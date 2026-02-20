@@ -20,6 +20,7 @@ local UIController = shared("UIController")
 local SkinBoxesConfig = shared("SkinBoxesConfig")
 local SkinsConfig = shared("SkinsConfig")
 local ViewportHelper = shared("ViewportHelper")
+local SoundController = shared("SoundController")
 
 -- Remote Events --
 local SkinBoxResultRemoteEvent = GetRemoteEvent("SkinBoxResult")
@@ -312,6 +313,9 @@ local function PlayRouletteAnimation(boxId, resultSkinId, resultMutation)
 		local scaleTime = ANIMATION_SPEED * 0.4 * speedMultiplier
 		local steps = math.max(3, math.floor(scaleTime / 0.016))
 
+		-- SFX
+		SoundController:PlaySound("SFX", "LuckyBlockTick")
+
 		-- Scale up
 		for step = 1, steps do
 			if _SkipRequested then
@@ -360,6 +364,10 @@ RevealWinner = function(skinId, model, originalTextures, distance)
 		RestoreModelTextures(originalTextures)
 	end
 
+	SoundController:PlaySound("SFX", "LuckyBlockReveal")
+	task.delay(1.5, function()
+		SoundController:PlaySound("SFX", skinId)
+	end)
 	SpawnConfetti(_ScreenGui)
 	SpawnHypeText(_ScreenGui)
 
@@ -452,6 +460,7 @@ local function ShowCrateOpening(boxId, resultSkinId, resultMutation, isNew, refu
 		if _PendingResult then
 			_CurrentState = STATE_ANIMATING
 			_ClickPrompt.Visible = false
+			SoundController:PlaySound("SFX", "LuckyBlockUse")
 			PlayRouletteAnimation(_PendingResult.BoxId, _PendingResult.SkinId, _PendingResult.Mutation)
 		end
 	end)

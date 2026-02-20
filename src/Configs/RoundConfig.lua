@@ -23,7 +23,7 @@ return TableHelper:DeepFreeze({
 
 	-- Phase durations (seconds)
 	Timers = {
-		WAITING_COUNTDOWN = 15, -- Time after min players reached before starting
+		WAITING_COUNTDOWN = 10, -- Time after min players reached before starting
 		MAP_LOADING_TIMEOUT = 10, -- Max time to wait for map load
 		SPAWNING_DURATION = 5,
 		MODIFIER_SETUP_DURATION = 3, -- Warning phase before effects

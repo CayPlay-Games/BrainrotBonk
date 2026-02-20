@@ -20,7 +20,7 @@ end
 -- Lifecycle Methods (override in subclasses) --
 
 -- Called when modifier is activated, receives map instance
-function BaseModifier:Init(mapInstance)
+function BaseModifier:Start(mapInstance)
 	self._mapInstance = mapInstance
 	self._isActive = true
 end

@@ -274,13 +274,7 @@ local function _PopulateQuestEntries()
 					or Color3.fromRGB(150, 150, 150)
 				claimButton.Active = isClaimable
 
-				claimButton.MouseEnter:Connect(function()
-					SoundController:PlaySound("SFX", "MouseHover")
-				end)
-
 				claimButton.MouseButton1Click:Connect(function()
-					SoundController:PlaySound("SFX", "MouseClick")
-
 					if isClaimable then
 						QuestController:RequestClaim(quest.Id)
 					end
@@ -371,14 +365,12 @@ local function _SetupUI(screenGui)
 
 	if _DailyTab and _DailyTab:IsA("GuiButton") then
 		_DailyTab.MouseButton1Click:Connect(function()
-			SoundController:PlaySound("SFX", "MouseClick")
 			_SelectTab("Daily")
 		end)
 	end
 
 	if _WeeklyTab and _WeeklyTab:IsA("GuiButton") then
 		_WeeklyTab.MouseButton1Click:Connect(function()
-			SoundController:PlaySound("SFX", "MouseClick")
 			_SelectTab("Weekly")
 		end)
 	end
@@ -386,7 +378,6 @@ local function _SetupUI(screenGui)
 	local closeButton = _MainFrame:FindFirstChild("CloseButton")
 	if closeButton and closeButton:IsA("GuiButton") then
 		closeButton.MouseButton1Click:Connect(function()
-			SoundController:PlaySound("SFX", "MouseClick")
 			UIController:CloseWindow("QuestsWindow")
 		end)
 	end
