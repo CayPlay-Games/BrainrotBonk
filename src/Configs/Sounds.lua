@@ -227,6 +227,11 @@ Sounds.Config = {
 	SixSeven = {
 		SoundId = "rbxassetid://88780152475615",
 	},
+
+	-- Death SFX
+	ElectroTubDeath = {
+		SoundId = "rbxassetid://5509750509",
+	},
 }
 
 -- API Functions --
