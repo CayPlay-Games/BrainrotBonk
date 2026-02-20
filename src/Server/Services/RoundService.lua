@@ -669,6 +669,7 @@ local function EnterSpawning()
 			IsAlive = true,
 			EliminatedBy = nil,
 			PlacementPosition = nil,
+			Eliminations = 0,
 		}
 		_AlivePlayers[player] = true
 
@@ -706,6 +707,7 @@ local function EnterSpawning()
 			IsAlive = true,
 			EliminatedBy = nil,
 			PlacementPosition = nil,
+			Eliminations = 0,
 		}
 		_AlivePlayers[dummy] = true
 
@@ -1295,6 +1297,10 @@ function RoundService:EliminatePlayer(player, eliminatedBy)
 		local eliminator = Players:GetPlayerByUserId(eliminatorId)
 		if eliminator and eliminator ~= player then
 			LeaderboardService:IncrementKills(eliminator, 1)
+			-- Track eliminations for round results
+			if _RoundPlayers[eliminator] then
+				_RoundPlayers[eliminator].Eliminations = (_RoundPlayers[eliminator].Eliminations or 0) + 1
+			end
 		end
 	end
 
@@ -1321,6 +1327,22 @@ end
 -- Gets if a player is currently alive in the round
 function RoundService:IsPlayerAlive(player)
 	return _AlivePlayers[player] == true
+end
+
+-- Gets round player data for all participants (used by RoundResultsService)
+function RoundService:GetRoundPlayersData()
+	local data = {}
+	for player, playerData in pairs(_RoundPlayers) do
+		if typeof(player) == "Instance" and player:IsA("Player") then
+			data[player] = {
+				IsAlive = playerData.IsAlive,
+				EliminatedBy = playerData.EliminatedBy,
+				PlacementPosition = playerData.PlacementPosition,
+				Eliminations = playerData.Eliminations or 0,
+			}
+		end
+	end
+	return data
 end
 
 -- Gets the alive round entity (player or dummy) that owns a character model.
