@@ -1287,12 +1287,20 @@ function RoundService:EliminatePlayer(player, eliminatedBy)
 		CleanupDummy(player)
 	elseif character and character:FindFirstChild("HumanoidRootPart") then
 		-- Play death effect before restoration
-		DeathEffectsService:PlayDeathEffect(player, character):andThen(function()
-			-- Check player is still valid before restoring
-			if player.Parent then
-				SkinService:RestoreOriginalCharacter(player)
-			end
-		end)
+		DeathEffectsService:PlayDeathEffect(player, character)
+			:andThen(function()
+				-- Check player is still valid before restoring
+				if player.Parent then
+					SkinService:RestoreOriginalCharacter(player)
+				end
+			end)
+			:catch(function(err)
+				warn("[RoundService] Death effect error:", err)
+				-- Still restore character on error
+				if player.Parent then
+					SkinService:RestoreOriginalCharacter(player)
+				end
+			end)
 	else
 		-- No physics box (player already respawning), skip effect
 		SkinService:RestoreOriginalCharacter(player)

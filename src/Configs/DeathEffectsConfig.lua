@@ -15,7 +15,6 @@ return TableHelper:DeepFreeze({
 	-- Effect definitions
 	Effects = {
 		SaladSpinner = {
-			Id = "SaladSpinner",
 			DisplayName = "Blended",
 			Duration = 2.5,
 
@@ -33,7 +32,6 @@ return TableHelper:DeepFreeze({
 		},
 
 		ElectroTub = {
-			Id = "ElectroTub",
 			DisplayName = "Electrocuted",
 			Duration = 2.0,
 
@@ -48,7 +46,6 @@ return TableHelper:DeepFreeze({
 		},
 
 		Default = {
-			Id = "Default",
 			DisplayName = "Eliminated",
 			Duration = 1.0,
 

@@ -34,26 +34,10 @@ local function ExtractSkinData(physicsBox, player)
 	local mutationConfig = SkinsConfig.Mutations[mutation]
 	local mutationColor = mutationConfig and mutationConfig.Color or Color3.new(1, 1, 1)
 
-	-- Collect all part data for reconstruction on client
-	local partsData = {}
-	for _, part in ipairs(skinModel:GetDescendants()) do
-		if part:IsA("BasePart") then
-			table.insert(partsData, {
-				Name = part.Name,
-				Size = part.Size,
-				Color = part.Color,
-				Material = part.Material,
-				CFrame = part.CFrame,
-			})
-		end
-	end
-
 	local pivot = physicsBox:GetPivot()
 	return {
-		Parts = partsData,
 		MutationColor = mutationColor,
 		Position = pivot.Position,
-		Rotation = pivot.Rotation,
 	}
 end
 

@@ -35,6 +35,7 @@ local function DebugLog(...)
 end
 
 -- Applies slippery physics to all BaseParts in the map
+-- TODO -- this is only for platform
 local function ApplySlipperyPhysics(mapInstance)
 	local slipperyProperties = PhysicalProperties.new(
 		0.7, -- Density

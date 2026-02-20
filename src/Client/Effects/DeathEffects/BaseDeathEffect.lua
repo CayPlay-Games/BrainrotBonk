@@ -22,7 +22,6 @@ function BaseDeathEffect.new(config)
 	self.Config = config or {}
 	self.Settings = config.Settings or {}
 	self._createdParts = {}
-	self._connections = {}
 
 	return self
 end
@@ -58,23 +57,14 @@ function BaseDeathEffect:Play(skinData, duration)
 	-- Subclasses implement this
 end
 
--- Cleanup all created parts and connections
+-- Cleanup all created parts
 function BaseDeathEffect:Cleanup()
-	-- Destroy all created parts
 	for _, part in ipairs(self._createdParts) do
 		if part and part.Parent then
 			part:Destroy()
 		end
 	end
 	self._createdParts = {}
-
-	-- Disconnect connections
-	for _, conn in ipairs(self._connections) do
-		if conn.Connected then
-			conn:Disconnect()
-		end
-	end
-	self._connections = {}
 end
 
 -- Return Module --

@@ -93,7 +93,6 @@ function SaladSpinnerDeathEffect:Play(skinData, duration, playerName)
 	for i = 1, partCount do
 		local size = math.random() * (partSizeMax - partSizeMin) + partSizeMin
 
-
 		local piece = self:CreatePart({
 			Name = "BlendPiece",
 			Size = Vector3.new(size, size, size),
