@@ -45,7 +45,9 @@ end
 
 -- Gets or creates the blur effect
 local function GetOrCreateBlur()
-	if _BlurEffect then return _BlurEffect end
+	if _BlurEffect then
+		return _BlurEffect
+	end
 
 	_BlurEffect = Instance.new("BlurEffect")
 	_BlurEffect.Name = "UIControllerBlur"
@@ -57,7 +59,9 @@ end
 
 -- Gets the HUD ScreenGui reference
 local function GetHUDScreenGui()
-	if _HUDScreenGui then return _HUDScreenGui end
+	if _HUDScreenGui then
+		return _HUDScreenGui
+	end
 	_HUDScreenGui = PlayerGui:FindFirstChild("HUD")
 	return _HUDScreenGui
 end
@@ -100,13 +104,17 @@ end
 
 local function SetupWindow(windowName)
 	local screenGui = PlayerGui:FindFirstChild(windowName)
-	if not screenGui then return nil end
+	if not screenGui then
+		return nil
+	end
 
 	local mainFrame = screenGui:FindFirstChild("MainFrame")
-	if not mainFrame then return nil end
+	if not mainFrame then
+		return nil
+	end
 
 	local uiScale = mainFrame:FindFirstChild("UIScale")
-	local closeButton = mainFrame:FindFirstChild("CloseButton")
+	local closeButton = mainFrame:FindFirstChild("CloseButton", true)
 
 	-- Initialize scale to 0 (closed)
 	if uiScale then
@@ -125,7 +133,7 @@ local function SetupWindow(windowName)
 		ScreenGui = screenGui,
 		MainFrame = mainFrame,
 		UIScale = uiScale,
-		CloseButton = closeButton
+		CloseButton = closeButton,
 	}
 
 	DebugLog("Window setup complete:", windowName)
@@ -134,7 +142,9 @@ end
 
 -- Sets up the ChildAdded listener (only once)
 local function EnsureChildAddedListener()
-	if _ChildAddedConnection then return end
+	if _ChildAddedConnection then
+		return
+	end
 
 	_ChildAddedConnection = PlayerGui.ChildAdded:Connect(function(child)
 		local callbacks = _PendingCallbacks[child.Name]
@@ -201,7 +211,9 @@ end
 
 function UIController:CloseWindow(windowName)
 	local config = _WindowConfigs[windowName]
-	if not config then return false end
+	if not config then
+		return false
+	end
 
 	-- Not open?
 	if not _OpenWindows[windowName] then
