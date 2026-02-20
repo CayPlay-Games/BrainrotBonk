@@ -1323,6 +1323,21 @@ function RoundService:IsPlayerAlive(player)
 	return _AlivePlayers[player] == true
 end
 
+-- Gets round player data for all participants (used by RoundResultsService)
+function RoundService:GetRoundPlayersData()
+	local data = {}
+	for player, playerData in pairs(_RoundPlayers) do
+		if typeof(player) == "Instance" and player:IsA("Player") then
+			data[player] = {
+				IsAlive = playerData.IsAlive,
+				EliminatedBy = playerData.EliminatedBy,
+				PlacementPosition = playerData.PlacementPosition,
+			}
+		end
+	end
+	return data
+end
+
 -- Gets the alive round entity (player or dummy) that owns a character model.
 function RoundService:GetAliveEntityFromCharacter(model)
 	return ResolveEntityFromCharacterModel(model)
