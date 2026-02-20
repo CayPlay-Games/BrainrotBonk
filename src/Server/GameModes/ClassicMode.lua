@@ -51,13 +51,24 @@ function ClassicMode:OnMapLoaded(mapInstance)
 	self._mapInstance = mapInstance
 	self._currentScale = 1.0
 
-	-- Store original pivot point (center of map)
-	self._originalPivot = mapInstance:GetPivot()
-
 	-- Cache all shrinkable parts (only Platform model and its descendants)
 	self._shrinkableDescendants = {}
 
 	local platform = mapInstance:FindFirstChild("Platform")
+
+	-- Calculate platform center for scaling pivot (not map pivot which may be off-center)
+	if platform then
+		if platform:IsA("Model") then
+			local cframe, _ = platform:GetBoundingBox()
+			self._originalPivot = cframe
+		elseif platform:IsA("BasePart") then
+			self._originalPivot = platform.CFrame
+		else
+			self._originalPivot = mapInstance:GetPivot()
+		end
+	else
+		self._originalPivot = mapInstance:GetPivot()
+	end
 	if platform then
 		-- Include the Platform itself if it's a BasePart
 		if platform:IsA("BasePart") then
