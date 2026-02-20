@@ -39,8 +39,8 @@ function MeteorShowerModifier.new(settings)
 	return self
 end
 
-function MeteorShowerModifier:Init(mapInstance)
-	BaseModifier.Init(self, mapInstance)
+function MeteorShowerModifier:Start(mapInstance)
+	BaseModifier.Start(self, mapInstance)
 	DebugLog("Initialized for map:", mapInstance and mapInstance.Name or "unknown")
 end
 

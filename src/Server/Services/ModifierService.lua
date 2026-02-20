@@ -117,7 +117,7 @@ function ModifierService:OnMapLoaded(mapId, mapInstance)
 
 	-- Create instance and initialize
 	_CurrentModifierInstance = modifierModule.new(modifierConfig.Settings)
-	_CurrentModifierInstance:Init(mapInstance)
+	_CurrentModifierInstance:Start(mapInstance)
 
 	DebugLog("Modifier ready for map:", mapId, "Modifier:", modifierDef.Id, "Chance:", modifierDef.Chance)
 end
