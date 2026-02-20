@@ -63,10 +63,10 @@ local function OnMapEffectStarted(data)
 		return
 	end
 
-	-- Get the map instance from workspace
-	local mapInstance = Workspace:FindFirstChild("CurrentMap")
+	-- Get the map instance from workspace (wait for replication)
+	local mapInstance = Workspace:WaitForChild("CurrentMap", 5)
 	if not mapInstance then
-		warn("[MapEffectsController] CurrentMap not found in Workspace")
+		warn("[MapEffectsController] CurrentMap not found in Workspace after 5s timeout")
 		return
 	end
 
