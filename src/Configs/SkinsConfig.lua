@@ -93,6 +93,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://131516360936386",
 				Walk = "rbxassetid://127026223662741",
 			},
+			SFX = "rbxassetid://72170332385958"
 		},
 		LiriliLarila = {
 			DisplayName = "Lirili Larila",
@@ -104,6 +105,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://120971938846420",
 				Walk = "rbxassetid://83432739236330",
 			},
+			SFX = "rbxassetid://103801170706013"
 		},
 		TimCheese = {
 			DisplayName = "Tim Cheese",
@@ -115,6 +117,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://86348273989347",
 				Walk = "rbxassetid://106404853990555",
 			},
+			SFX = "rbxassetid://110746146935369"
 			
 		},
 		TalpaDiFero = {
@@ -127,6 +130,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://89864724190456",
 				Walk = "rbxassetid://96081223658637",
 			},
+			SFX = "rbxassetid://99086786630079"
 		},
 		SvininaBombardino = {
 			DisplayName = "Svinina Bombardino",
@@ -138,6 +142,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://79352899422395",
 				Walk = "rbxassetid://113655292285969",
 			},
+			SFX = "rbxassetid://81361393901087"
 		},
 		PipiKiwi = {
 			DisplayName = "Pipi Kiwi",
@@ -149,6 +154,7 @@ local SkinsByRarity = {
 			-- 	Idle = "rbxassetid://11111111",
 			-- 	Walk = "rbxassetid://11111111",
 			-- },
+			SFX = "rbxassetid://78526637722167"
 		},
 	},
 	Uncommon = {
@@ -162,6 +168,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://139496909160914",
 				Walk = "rbxassetid://100894031703721",
 			},
+			SFX = "rbxassetid://137424152814465"
 		},
 		BonecaAmbalabu = {
 			DisplayName = "Boneca Ambalabu",
@@ -173,6 +180,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://118387631710622",
 				Walk = "rbxassetid://91423826769103",
 			},
+			SFX = "rbxassetid://95526722233240"
 		},
 		CactoHipopotamo = {
 			DisplayName = "Cacto Hipopotamo",
@@ -184,6 +192,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://125472246714890",
 				Walk = "rbxassetid://96198845585504",
 			},
+			SFX = "rbxassetid://75625787331849"
 		},
 		TricTracBarabum = {
 			DisplayName = "Tric Trac Barabum",
@@ -195,6 +204,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://82143507368589",
 				Walk = "rbxassetid://81292628834198",
 			},
+			SFX = "rbxassetid://129060617428644"
 		},
 		TatatataSahur = {
 			DisplayName = "Tatatata Sahur",
@@ -206,6 +216,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://123686186041471",
 				Walk = "rbxassetid://71189167787158",
 			},
+			SFX = "rbxassetid://119591828669046"
 		},
 		GangsterFootera = {
 			DisplayName = "Gangster Footera",
@@ -217,6 +228,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://115295263680159",
 				Walk = "rbxassetid://101945039484336",
 			},
+			SFX = "rbxassetid://74440735184624"
 		},
 		TrippiTroppi = {
 			DisplayName = "Trippi Troppi",
@@ -228,6 +240,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://135559380377952",
 				Walk = "rbxassetid://117345603865181",
 			},
+			SFX = "rbxassetid://93742743087587"
 		},
 	},
 
@@ -242,6 +255,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://96422749344999",
 				Walk = "rbxassetid://96870282490761",
 			},
+			SFX = "rbxassetid://76530672691189"
 		},
 		BrrBrrPatapim = {
 			DisplayName = "Brr Brr Patapim",
@@ -253,6 +267,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://91576339516554",
 				Walk = "rbxassetid://100795399080498",
 			},
+			SFX = "rbxassetid://133309305901949"
 		},
 		AvocadiniGuffo = {
 			DisplayName = "Avocadini Guffo",
@@ -264,6 +279,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://102820787617428",
 				Walk = "rbxassetid://138762612908285",
 			},
+			SFX = "rbxassetid://77534236910900"
 		},
 		TrulimeroTrulicina = {
 			DisplayName = "Trulimero Trulicina",
@@ -275,6 +291,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://115267414688609",
 				Walk = "rbxassetid://124345279337057",
 			},
+			SFX = "rbxassetid://104911190548459"
 		},
 		BambiniCrostini = {
 			DisplayName = "Bambini Crostini",
@@ -286,6 +303,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://140348463857066",
 				Walk = "rbxassetid://133879691545321",
 			},
+			SFX = "rbxassetid://133772763262636"
 		},
 		BananitoDelfinito = {
 			DisplayName = "Bananito Delfinito",
@@ -297,6 +315,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://133715981664840",
 				Walk = "rbxassetid://82585146469430",
 			},
+			SFX = "rbxassetid://100962597448808"
 		},
 		BrrBicusDicus = {
 			DisplayName = "Brr Bicus Dicus",
@@ -308,6 +327,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://86065687295212",
 				Walk = "rbxassetid://81906586585329",
 			},
+			SFX = "rbxassetid://138228435357957"
 		},
 
 	},
@@ -323,6 +343,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://136501496691682",
 				Walk = "rbxassetid://73252987606026",
 			},
+			SFX = "rbxassetid://121385220046157"
 		},
 		GlorboFruttodrillo = {
 			DisplayName = "Glorbo Fruttodrillo",
@@ -334,6 +355,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://112592584886915",
 				Walk = "rbxassetid://129839684102657",
 			},
+			SFX = "rbxassetid://137966008500848"
 		},
 		LioneloCactuseli = {
 			DisplayName = "Lionelo Cactuseli",
@@ -345,6 +367,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://83606715572070",
 				Walk = "rbxassetid://124970626753043",
 			},
+			SFX = "rbxassetid://137648505810929"
 		},
 		ChefCrabracadabra = {
 			DisplayName = "Chef Crabracadabra",
@@ -356,6 +379,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://87677415734552",
 				Walk = "rbxassetid://98627258336948",
 			},
+			SFX = "rbxassetid://116111720107645"
 		},
 		BalerinaCapucina = {
 			DisplayName = "Balerina Capucina",
@@ -367,6 +391,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://118012985273361",
 				Walk = "rbxassetid://134999561598679",
 			},
+			SFX = "rbxassetid://131576013989436"
 		},
 		ChimpanziniBananini = {
 			DisplayName = "Chimpanzini Bananini",
@@ -378,6 +403,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://133015480135776",
 				Walk = "rbxassetid://100451191990988",
 			},
+			SFX = "rbxassetid://111681288980174"
 		},
 		BurbaloniLoliloli = {
 			DisplayName = "Burbaloni Loliloli",
@@ -389,6 +415,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://85016104478285",
 				Walk = "rbxassetid://130512841998582",
 			},
+			SFX = "rbxassetid://132522217286230"
 		},
 
 	},
@@ -404,6 +431,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://140242225751586",
 				Walk = "rbxassetid://71113969548451",
 			},
+			SFX = "rbxassetid://125776093695080"
 		},
 		GorilloWatermelondrillo = {
 			DisplayName = "Gorillo Watermelondrillo",
@@ -415,6 +443,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://73461033882974",
 				Walk = "rbxassetid://114766218625224",
 			},
+			SFX = "rbxassetid://91798137531539"
 		},
 		ZibraZubraZibralini = {
 			DisplayName = "Zibra Zubra Zibralini",
@@ -426,6 +455,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://129949912443499",
 				Walk = "rbxassetid://129390168869157",
 			},
+			SFX = "rbxassetid://97556318541799"
 		},
 		CavalloVirtuoso = {
 			DisplayName = "Cavallo Virtuoso",
@@ -437,6 +467,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://106664039135926",
 				Walk = "rbxassetid://76257502008888",
 			},
+			SFX = "rbxassetid://134636783401291"
 		},
 		BombombiniGusini = {
 			DisplayName = "Bombombini Gusini",
@@ -448,6 +479,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://114175290284549",
 				Walk = "rbxassetid://114175290284549",
 			},
+			SFX = "rbxassetid://133338979919517"
 		},
 		RhinoToasterino = {
 			DisplayName = "Rhino Toasterino",
@@ -459,6 +491,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://80020952300118",
 				Walk = "rbxassetid://110035560315340",
 			},
+			SFX = "rbxassetid://88599201450484"
 		},
 		OrangutiniAnanassini = {
 			DisplayName = "Orangutini Ananassini",
@@ -470,6 +503,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://82540318286365",
 				Walk = "rbxassetid://81082328872954",
 			},
+			SFX = "rbxassetid://112149559020243"
 		},
 		FrigoCamelo = {
 			DisplayName = "Frigo Camelo",
@@ -481,6 +515,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://86222387240301",
 				Walk = "rbxassetid://111172665897524",
 			},
+			SFX = "rbxassetid://136871186386842"
 		},
 	},
 
@@ -495,6 +530,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://128184906553401",
 				Walk = "rbxassetid://115058047411363",
 			},
+			SFX = "[rbxassetid://73530770949393"
 		},
 		NyanCat = {
 			DisplayName = "Nyan Cat",
@@ -506,6 +542,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://91715237758205",
 				Walk = "rbxassetid://123640975400235",
 			},
+			SFX = "rbxassetid://88974647548982"
 		},
 		GirafaCelestre = {
 			DisplayName = "Girafa Celestre",
@@ -517,6 +554,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://113718275728829",
 				Walk = "rbxassetid://117982366782740",
 			},
+			SFX = "rbxassetid://73286409617836"
 		},
 		Mateo = {
 			DisplayName = "Mateo",
@@ -528,6 +566,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://95876332418915",
 				Walk = "rbxassetid://101174957978368",
 			},
+			SFX = "rbxassetid://96772181798752"
 		},
 		TralaleroTralala = {
 			DisplayName = "Tralalero Tralala",
@@ -539,6 +578,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://74906068282773",
 				Walk = "rbxassetid://128289372283092",
 			},
+			SFX = "rbxassetid://117987388988728"
 		},
 		OdinDinDinDun = {
 			DisplayName = "Odin Din Din Dun",
@@ -550,6 +590,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://97721155280856",
 				Walk = "rbxassetid://128451967983331",
 			},
+			SFX = "rbxassetid://91288143503848"
 		},
 		OrcaleroOrcala = {
 			DisplayName = "Orcalero Orcala",
@@ -561,6 +602,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://76870438404326",
 				Walk = "rbxassetid://107503193100972",
 			},
+			SFX = "rbxassetid://70574783668882"
 		},
 	},
 	Secret = {
@@ -574,6 +616,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://134421029856566",
 				Walk = "rbxassetid://102579698107055",
 			},
+			SFX = "rbxassetid://116271324433632"
 		},
 		LaGrandeCombinasion = {
 			DisplayName = "La Grande Combinasion",
@@ -585,6 +628,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://115069083582036",
 				Walk = "rbxassetid://135181682426636",
 			},
+			SFX = "rbxassetid://107106303688699"
 		},
 		TriplitoTralaleritos = {
 			DisplayName = "Triplito Tralaleritos",
@@ -596,6 +640,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://70775514535073",
 				Walk = "rbxassetid://107475480762025",
 			},
+			SFX = "rbxassetid://88157432782425"
 		},
 		PotHotspot = {
 			DisplayName = "Pot Hotspot",
@@ -607,6 +652,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://131641999705027",
 				Walk = "rbxassetid://80300082282013",
 			},
+			SFX = "rbxassetid://130139040816037"
 		},
 		TorrtuginniDragonfrutini = {
 			DisplayName = "Torrtuginni Dragonfrutini",
@@ -618,6 +664,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://87713858699363",
 				Walk = "rbxassetid://131929340038435",
 			},
+			SFX = "rbxassetid://133504892201844"
 		},
 		ChicleteiraBicicleteira = {
 			DisplayName = "Chicleteira Bicicleteira",
@@ -629,6 +676,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://78700542784367",
 				Walk = "rbxassetid://82256130164629",
 			},
+			SFX = "rbxassetid://101487900491492"
 		},
 		SixSeven = {
 			DisplayName = "6 7",
@@ -640,6 +688,7 @@ local SkinsByRarity = {
 				Idle = "rbxassetid://120568575068578",
 				Walk = "rbxassetid://100376783802964",
 			},
+			SFX = "rbxassetid://88780152475615"
 		},
 		-- Leaderboard Champion Skins (exclusive rewards for top 3)
 		KillsChampion = {
