@@ -20,9 +20,11 @@ local RoundResultsEvent = GetRemoteEvent("RoundResults")
 
 -- Constants --
 local XPRewards = RankConfig.XPRewards
-
--- Private Variables --
--- Public Variables --
+local PlacementInfo = {
+	[1] = { Key = "Place1st", Label = "1st Place" },
+	[2] = { Key = "Place2nd", Label = "2nd Place" },
+	[3] = { Key = "Place3rd", Label = "3rd Place" },
+}
 
 -- Internal Functions --
 local function CalculateXPBreakdown(results)
@@ -32,10 +34,7 @@ local function CalculateXPBreakdown(results)
 	-- Completed round XP
 	if results.Completed then
 		local xp = XPRewards.PlayGame
-		table.insert(breakdown, {
-			Reason = "Round Completed",
-			XP = xp,
-		})
+		table.insert(breakdown, { Reason = "Round Completed", XP = xp })
 		totalXP = totalXP + xp
 	end
 
@@ -43,35 +42,15 @@ local function CalculateXPBreakdown(results)
 	local eliminations = results.Eliminations or 0
 	if eliminations > 0 then
 		local xp = XPRewards.Kill * eliminations
-		table.insert(breakdown, {
-			Reason = string.format("Eliminations (x%d)", eliminations),
-			XP = xp,
-		})
+		table.insert(breakdown, { Reason = string.format("Eliminations (x%d)", eliminations), XP = xp })
 		totalXP = totalXP + xp
 	end
 
 	-- Placement XP
-	local placement = results.Placement
-	if placement == 1 then
-		local xp = XPRewards.Place1st
-		table.insert(breakdown, {
-			Reason = "1st Place",
-			XP = xp,
-		})
-		totalXP = totalXP + xp
-	elseif placement == 2 then
-		local xp = XPRewards.Place2nd
-		table.insert(breakdown, {
-			Reason = "2nd Place",
-			XP = xp,
-		})
-		totalXP = totalXP + xp
-	elseif placement == 3 then
-		local xp = XPRewards.Place3rd
-		table.insert(breakdown, {
-			Reason = "3rd Place",
-			XP = xp,
-		})
+	local info = PlacementInfo[results.Placement]
+	if info then
+		local xp = XPRewards[info.Key]
+		table.insert(breakdown, { Reason = info.Label, XP = xp })
 		totalXP = totalXP + xp
 	end
 
@@ -100,6 +79,7 @@ local function OnRoundResults(results)
 	end
 
 	PrintResults(results)
+	-- TODO: Display XP breakdown in UI
 end
 
 -- API Functions --

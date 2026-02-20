@@ -669,6 +669,7 @@ local function EnterSpawning()
 			IsAlive = true,
 			EliminatedBy = nil,
 			PlacementPosition = nil,
+			Eliminations = 0,
 		}
 		_AlivePlayers[player] = true
 
@@ -706,6 +707,7 @@ local function EnterSpawning()
 			IsAlive = true,
 			EliminatedBy = nil,
 			PlacementPosition = nil,
+			Eliminations = 0,
 		}
 		_AlivePlayers[dummy] = true
 
@@ -1295,6 +1297,10 @@ function RoundService:EliminatePlayer(player, eliminatedBy)
 		local eliminator = Players:GetPlayerByUserId(eliminatorId)
 		if eliminator and eliminator ~= player then
 			LeaderboardService:IncrementKills(eliminator, 1)
+			-- Track eliminations for round results
+			if _RoundPlayers[eliminator] then
+				_RoundPlayers[eliminator].Eliminations = (_RoundPlayers[eliminator].Eliminations or 0) + 1
+			end
 		end
 	end
 
@@ -1332,6 +1338,7 @@ function RoundService:GetRoundPlayersData()
 				IsAlive = playerData.IsAlive,
 				EliminatedBy = playerData.EliminatedBy,
 				PlacementPosition = playerData.PlacementPosition,
+				Eliminations = playerData.Eliminations or 0,
 			}
 		end
 	end
