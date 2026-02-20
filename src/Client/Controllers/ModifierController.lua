@@ -24,17 +24,13 @@ local MeteorResolveEvent = GetRemoteEvent("MeteorResolve")
 local ArrowWarningEvent = GetRemoteEvent("ArrowWarning")
 local ArrowResolveEvent = GetRemoteEvent("ArrowResolve")
 
+-- Constants --
 -- Private Variables --
 local _Connections = {}
 local _CurrentController = nil
 local _CurrentModifierId = nil
 
 -- Internal Functions --
-
-local function DebugLog(...)
-	print("[ModifierController]", ...)
-end
-
 -- Dynamically loads a modifier controller module
 local function LoadModifierController(modifierId)
 	local moduleName = modifierId .. "ModifierController"
@@ -45,7 +41,6 @@ local function LoadModifierController(modifierId)
 	if success and controllerModule then
 		return controllerModule
 	else
-		DebugLog("Warning: Could not load controller module:", moduleName)
 		return nil
 	end
 end
@@ -71,7 +66,6 @@ local function ActivateModifier(modifierId, mapInstance)
 	-- Load the controller module
 	local ControllerClass = LoadModifierController(modifierId)
 	if not ControllerClass then
-		DebugLog("No controller available for modifier:", modifierId)
 		_CurrentModifierId = nil
 		return
 	end
@@ -83,7 +77,6 @@ local function ActivateModifier(modifierId, mapInstance)
 
 	-- Start the controller with map instance
 	_CurrentController:Start(mapInstance)
-	DebugLog("Activated controller for:", modifierId)
 end
 
 -- Cleans up the current modifier controller
@@ -99,8 +92,6 @@ end
 
 -- Initializers --
 function ModifierController:Init()
-	DebugLog("Initializing...")
-
 	-- Meteor Shower events
 	table.insert(_Connections, MeteorWarningEvent.OnClientEvent:Connect(function(targetPositions, impactRadius)
 		if _CurrentController and _CurrentModifierId == "MeteorShower" then
@@ -152,8 +143,6 @@ function ModifierController:Init()
 			end
 		end))
 	end)
-
-	DebugLog("Initialized")
 end
 
 -- Return Module --

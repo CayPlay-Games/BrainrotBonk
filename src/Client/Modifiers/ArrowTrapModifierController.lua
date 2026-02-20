@@ -20,12 +20,15 @@ local ArrowTrapModifierController = setmetatable({}, { __index = BaseModifierCon
 ArrowTrapModifierController.__index = ArrowTrapModifierController
 
 -- Constants --
+local DEBUG_MODE = false
 local IMPACT_COLOR = Color3.fromRGB(255, 150, 50)
 
 -- Internal Functions --
 
 local function DebugLog(...)
-	print("[ArrowTrapModifierController]", ...)
+	if DEBUG_MODE then
+		print("[ArrowTrapModifierController]", ...)
+	end
 end
 
 function ArrowTrapModifierController.new(modifierConfig)
@@ -35,6 +38,8 @@ function ArrowTrapModifierController.new(modifierConfig)
 	self._pendingArrowData = {}
 	self._activeIndicators = {}
 	self._activeArrows = {}
+	self._arrowParticleEmitters = {} -- Cache particle emitters per arrow
+	self._animationConnections = {} -- Track RenderStepped connections
 	self._cachedArrowTemplate = nil
 	self._cachedMapName = nil
 	self._cachedPlatformBounds = nil
@@ -173,7 +178,7 @@ function ArrowTrapModifierController:_CreateArrowWarningZone(origin, direction, 
 end
 
 -- Spawns a visual arrow at its origin (stationary, waiting for resolve)
-function ArrowTrapModifierController:_SpawnArrowAtOrigin(arrowData)
+function ArrowTrapModifierController:_SpawnArrowAtOrigin(arrowData, index)
 	if not self._cachedArrowTemplate then
 		DebugLog("No arrow template cached, skipping visual")
 		return nil
@@ -192,6 +197,15 @@ function ArrowTrapModifierController:_SpawnArrowAtOrigin(arrowData)
 	arrow:PivotTo(startCFrame)
 	arrow.Parent = Workspace
 
+	-- Cache particle emitters for this arrow (avoid multiple GetDescendants calls)
+	local emitters = {}
+	for _, descendant in ipairs(arrow:GetDescendants()) do
+		if descendant:IsA("ParticleEmitter") then
+			table.insert(emitters, descendant)
+		end
+	end
+	self._arrowParticleEmitters[index] = emitters
+
 	table.insert(self._activeArrows, arrow)
 	return arrow
 end
@@ -209,11 +223,10 @@ function ArrowTrapModifierController:_AnimateArrow(arrow, arrowData, arrowInterv
 
 		local rotationOffset = CFrame.Angles(math.rad(270), math.rad(90), 0)
 
-		-- Enable particle effects
-		for _, descendant in ipairs(arrow:GetDescendants()) do
-			if descendant:IsA("ParticleEmitter") then
-				descendant.Enabled = true
-			end
+		-- Enable particle effects using cached emitters
+		local emitters = self._arrowParticleEmitters[index] or {}
+		for _, emitter in ipairs(emitters) do
+			emitter.Enabled = true
 		end
 
 		-- Animate entire model using PivotTo each frame
@@ -230,14 +243,16 @@ function ArrowTrapModifierController:_AnimateArrow(arrow, arrowData, arrowInterv
 			if alpha >= 1 then
 				connection:Disconnect()
 
-				for _, descendant in ipairs(arrow:GetDescendants()) do
-					if descendant:IsA("ParticleEmitter") then
-						descendant.Enabled = false
-					end
+				-- Disable particle effects using cached emitters
+				for _, emitter in ipairs(emitters) do
+					emitter.Enabled = false
 				end
 				Debris:AddItem(arrow, 0.1)
 			end
 		end)
+
+		-- Track connection for cleanup in case of early termination
+		table.insert(self._animationConnections, connection)
 	end)
 end
 
@@ -252,12 +267,23 @@ function ArrowTrapModifierController:_ClearIndicators()
 
 	self._pendingArrowData = {}
 
+	-- Disconnect any active animation connections
+	for _, connection in ipairs(self._animationConnections) do
+		if connection.Connected then
+			connection:Disconnect()
+		end
+	end
+	self._animationConnections = {}
+
 	for _, arrow in ipairs(self._activeArrows) do
 		if arrow.Parent then
 			arrow:Destroy()
 		end
 	end
 	self._activeArrows = {}
+
+	-- Clear cached particle emitters
+	self._arrowParticleEmitters = {}
 
 	self._cachedArrowTemplate = nil
 	self._cachedMapName = nil
@@ -304,8 +330,8 @@ function ArrowTrapModifierController:OnWarning(arrowData, mapName)
 	end
 
 	-- Spawn arrows at their origin positions (stationary)
-	for _, data in ipairs(arrowData) do
-		self:_SpawnArrowAtOrigin(data)
+	for index, data in ipairs(arrowData) do
+		self:_SpawnArrowAtOrigin(data, index)
 	end
 
 	-- Store for resolve phase

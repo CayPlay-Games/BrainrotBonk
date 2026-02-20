@@ -25,6 +25,7 @@ return TableHelper:DeepFreeze({
 				MeteorCount = 3,                -- Number of meteors to spawn
 				MeteorInterval = 0.4,           -- Seconds between meteor spawns
 				MeteorSpeed = 40,               -- Studs per second fall speed
+				MeteorSpawnHeight = 100,        -- Studs above target to spawn meteors
 				ImpactRadius = 12,               -- Studs radius of knockback
 				KnockbackForce = 30,            -- Force applied to players
 				TargetPlayers = false,           -- Meteors target player positions

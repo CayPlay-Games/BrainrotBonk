@@ -20,15 +20,18 @@ local MeteorShowerModifierController = setmetatable({}, { __index = BaseModifier
 MeteorShowerModifierController.__index = MeteorShowerModifierController
 
 -- Constants --
+local DEBUG_MODE = false
 local WARNING_INDICATOR_HEIGHT = 0.4
 local WARNING_COLOR = Color3.fromRGB(255, 251, 0)
 local IMPACT_COLOR = Color3.fromRGB(255, 150, 50)
-local METEOR_SPAWN_HEIGHT = 100
+local DEFAULT_SPAWN_HEIGHT = 100 -- Fallback if config not available
 
 -- Internal Functions --
 
 local function DebugLog(...)
-	print("[MeteorShowerModifierController]", ...)
+	if DEBUG_MODE then
+		print("[MeteorShowerModifierController]", ...)
+	end
 end
 
 function MeteorShowerModifierController.new(modifierConfig)
@@ -182,8 +185,9 @@ function MeteorShowerModifierController:_CreateFallingMeteor(targetPosition, imp
 		-- Track this meteor for cleanup
 		table.insert(self._activeMeteors, meteor)
 
-		-- Position at spawn height above target
-		local spawnPos = targetPosition + Vector3.new(0, METEOR_SPAWN_HEIGHT, 0)
+		-- Position at spawn height above target (use config or fallback)
+		local spawnHeight = (self.Config and self.Config.Settings and self.Config.Settings.MeteorSpawnHeight) or DEFAULT_SPAWN_HEIGHT
+		local spawnPos = targetPosition + Vector3.new(0, spawnHeight, 0)
 		meteor:PivotTo(CFrame.new(spawnPos))
 		meteor.Parent = Workspace
 
