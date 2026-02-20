@@ -36,7 +36,9 @@ end
 -- Checks if the local player is participating and alive in the current round
 local function IsLocalPlayerInRound()
 	local roundState = ClientDataStream.RoundState
-	if not roundState then return false end
+	if not roundState then
+		return false
+	end
 	local players = roundState.Players:Read() or {}
 	local localUserId = tostring(LocalPlayer.UserId)
 	local playerData = players[localUserId]
@@ -92,7 +94,9 @@ end
 
 -- Stops round camera mode (restore default)
 local function StopRoundCamera()
-	if not _IsInRound then return end
+	if not _IsInRound then
+		return
+	end
 	_IsInRound = false
 	_CameraSetupSuccessful = false
 
@@ -149,8 +153,12 @@ function CameraController:Init()
 		-- Helper to check and start camera if conditions are met
 		local function TryStartRoundCamera()
 			local currentState = roundState.State:Read()
-			if not roundPhases[currentState] then return end
-			if not IsLocalPlayerInRound() then return end
+			if not roundPhases[currentState] then
+				return
+			end
+			if not IsLocalPlayerInRound() then
+				return
+			end
 
 			if not _IsInRound then
 				StartRoundCamera()
