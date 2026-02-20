@@ -16,6 +16,7 @@ local Lighting = game:GetService("Lighting")
 
 -- Dependencies --
 local RoundConfig = shared("RoundConfig")
+local SoundController = shared("SoundController")
 
 -- Object References --
 local LocalPlayer = Players.LocalPlayer
@@ -124,7 +125,12 @@ local function SetupWindow(windowName)
 
 	-- Setup close button
 	if closeButton then
+		closeButton.MouseEnter:Connect(function()
+			SoundController:PlaySound("SFX", "MouseHover")
+		end)
+
 		closeButton.MouseButton1Click:Connect(function()
+			SoundController:PlaySound("SFX", "MouseClick")
 			UIController:CloseWindow(windowName)
 		end)
 	end

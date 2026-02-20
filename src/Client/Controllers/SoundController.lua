@@ -15,7 +15,6 @@ local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
 
 -- Dependencies --
-local BetterWarn = shared("BetterWarn")
 local SoundsConfig = shared("Configs/Sounds")
 
 -- Object References --
@@ -58,7 +57,7 @@ function SoundController:PlaySound(GroupName: string, SoundName: string, Configs
 	end
 
 	if not SoundConfig.SoundId then
-		BetterWarn("Sound configuration must have a valid sound id!")
+		warn("Sound configuration must have a valid sound id!")
 		return
 	end
 
