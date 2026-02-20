@@ -39,7 +39,6 @@ function ArrowTrapModifierController.new(modifierConfig)
 	self._activeIndicators = {}
 	self._activeArrows = {}
 	self._arrowParticleEmitters = {} -- Cache particle emitters per arrow
-	self._animationConnections = {} -- Track RenderStepped connections
 	self._cachedArrowTemplate = nil
 	self._cachedMapName = nil
 	self._cachedPlatformBounds = nil
@@ -230,10 +229,10 @@ function ArrowTrapModifierController:_AnimateArrow(arrow, arrowData, arrowInterv
 		end
 
 		-- Animate entire model using PivotTo each frame
-		local startTime = tick()
+		local startTime = os.clock()
 		local connection
 		connection = RunService.RenderStepped:Connect(function()
-			local elapsed = tick() - startTime
+			local elapsed = os.clock() - startTime
 			local alpha = math.min(elapsed / travelTime, 1)
 
 			local currentPos = origin:Lerp(endPoint, alpha)
@@ -252,7 +251,7 @@ function ArrowTrapModifierController:_AnimateArrow(arrow, arrowData, arrowInterv
 		end)
 
 		-- Track connection for cleanup in case of early termination
-		table.insert(self._animationConnections, connection)
+		self:AddConnection(connection)
 	end)
 end
 
@@ -267,13 +266,13 @@ function ArrowTrapModifierController:_ClearIndicators()
 
 	self._pendingArrowData = {}
 
-	-- Disconnect any active animation connections
-	for _, connection in ipairs(self._animationConnections) do
+	-- Disconnect any active animation connections (via base class)
+	for _, connection in ipairs(self._connections) do
 		if connection.Connected then
 			connection:Disconnect()
 		end
 	end
-	self._animationConnections = {}
+	self._connections = {}
 
 	for _, arrow in ipairs(self._activeArrows) do
 		if arrow.Parent then

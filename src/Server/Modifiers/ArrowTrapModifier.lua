@@ -130,14 +130,18 @@ function ArrowTrapModifier:Resolve()
 end
 
 function ArrowTrapModifier:SimulateArrowTravel(origin, direction, zoneLength, zoneWidth, speed, knockbackForce)
-	local startTime = tick()
+	local startTime = os.clock()
 	local travelTime = zoneLength / speed
 
 	local hitPlayers = {}
 	local cachedPlayers = {}
 	for _, player in ipairs(Players:GetPlayers()) do
 		if RoundService:IsPlayerAlive(player) then
-			table.insert(cachedPlayers, player)
+			local character = player.Character
+			local hrp = character and character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				table.insert(cachedPlayers, { Player = player, HRP = hrp })
+			end
 		end
 	end
 
@@ -148,7 +152,7 @@ function ArrowTrapModifier:SimulateArrowTravel(origin, direction, zoneLength, zo
 				break
 			end
 
-			local elapsed = tick() - startTime
+			local elapsed = os.clock() - startTime
 			if elapsed >= travelTime then
 				break
 			end
@@ -157,18 +161,13 @@ function ArrowTrapModifier:SimulateArrowTravel(origin, direction, zoneLength, zo
 			local distanceTraveled = elapsed * speed
 			local currentPos = origin + direction * distanceTraveled
 
-			for _, player in ipairs(cachedPlayers) do
-				if hitPlayers[player] then
+			for _, cached in ipairs(cachedPlayers) do
+				if hitPlayers[cached.Player] then
 					continue
 				end
 
-				local character = player.Character
-				if not character then
-					continue
-				end
-
-				local hrp = character:FindFirstChild("HumanoidRootPart")
-				if not hrp then
+				local hrp = cached.HRP
+				if not hrp or not hrp.Parent then
 					continue
 				end
 
@@ -184,7 +183,7 @@ function ArrowTrapModifier:SimulateArrowTravel(origin, direction, zoneLength, zo
 				local hitWindow = 4
 				if perpendicularDist <= zoneWidth / 2 and math.abs(alongPath) <= hitWindow then
 					self:ApplyArrowKnockback(hrp, direction, knockbackForce)
-					hitPlayers[player] = true
+					hitPlayers[cached.Player] = true
 				end
 			end
 
