@@ -30,7 +30,7 @@ return TableHelper:DeepFreeze({
 			Description = "Stay in-game for 10 minutes.",
 			Goal = 10,
 			ProgressKey = "PlayMinutes",
-			Reward = { Type = "Spins", Icon = "rbxassetid://131716603406642", Amount = 1 },
+			Reward = { Type = "Spins", Icon = "rbxassetid://129315303403075", Amount = 1 },
 			IsDaily = true,
 		},
 		{
@@ -39,7 +39,7 @@ return TableHelper:DeepFreeze({
 			Description = "Place 1st in 3 rounds.",
 			Goal = 3,
 			ProgressKey = "RoundsWon",
-			Reward = { Type = "Spins", Icon = "rbxassetid://131716603406642", Amount = 1 },
+			Reward = { Type = "Spins", Icon = "rbxassetid://129315303403075", Amount = 1 },
 			IsDaily = true,
 		},
 		{
@@ -77,7 +77,7 @@ return TableHelper:DeepFreeze({
 			Description = "Place 1st in 25 rounds this week.",
 			Goal = 25,
 			ProgressKey = "RoundsWon",
-			Reward = { Type = "Spins", Icon = "rbxassetid://131716603406642", Amount = 5 },
+			Reward = { Type = "Spins", Icon = "rbxassetid://129315303403075", Amount = 5 },
 			IsWeekly = true,
 		},
 		{
@@ -86,7 +86,7 @@ return TableHelper:DeepFreeze({
 			Description = "Complete 100 rounds this week.",
 			Goal = 100,
 			ProgressKey = "RoundsPlayed",
-			Reward = { Type = "Coins", Icon = "rbxassetid://112695884143780", Amount = 4000 },
+			Reward = { Type = "Coins", Icon = "rbxassetid://129315303403075", Amount = 4000 },
 			IsWeekly = true,
 		},
 		{
