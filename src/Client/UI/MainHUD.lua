@@ -181,6 +181,8 @@ local function SetupUI()
 
 	buttonGrid.ShopButton.MouseButton1Click:Connect(function()
 		DebugLog("Shop clicked")
+		local UIController = shared("UIController")
+		UIController:ToggleWindow("RobuxShopWindow")
 	end)
 
 	buttonGrid.IndexButton.MouseButton1Click:Connect(function()

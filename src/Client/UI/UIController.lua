@@ -283,6 +283,7 @@ function UIController:Init()
 	SetupWindow("IndexWindow")
 	SetupWindow("RankWindow")
 	SetupWindow("SkinShopWindow")
+	SetupWindow("RobuxShopWindow")
 	SetupWindow("PrizeWheelWindow")
 	SetupWindow("QuestsWindow")
 end
