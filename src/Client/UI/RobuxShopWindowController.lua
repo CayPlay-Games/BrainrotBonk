@@ -61,7 +61,7 @@ local function FindProductCardFromButton(button)
 	return nil
 end
 
-local function ResolveSkuByExactName(name)
+local function GetSkuByExactName(name)
 	if type(name) ~= "string" or name == "" then
 		return nil
 	end
@@ -71,7 +71,7 @@ local function ResolveSkuByExactName(name)
 	return nil
 end
 
-local function ResolveSkuByNormalizedName(name)
+local function GetSkuByNormalizedName(name)
 	local normalizedName = NormalizeKey(name)
 	if normalizedName == "" then
 		return nil
@@ -89,7 +89,7 @@ local function ResolveSkuByNormalizedName(name)
 	return matchedSku
 end
 
-local function ResolveSpinSkuFromName(name)
+local function GetSpinSkuFromName(name)
 	local normalizedName = NormalizeKey(name)
 	if normalizedName == "" then
 		return nil
@@ -115,7 +115,7 @@ local function ResolveSpinSkuFromName(name)
 	return matchedSku
 end
 
-local function ResolveCoinSkuFromName(name)
+local function GetCoinSkuFromName(name)
 	local normalizedName = NormalizeKey(name)
 	if normalizedName == "" or (not normalizedName:find("coin", 1, true)) then
 		return nil
@@ -140,7 +140,7 @@ local function ResolveCoinSkuFromName(name)
 	return matchedSku
 end
 
-local function ResolveProductSKU(button)
+local function GetProductSKU(button)
 	local card = FindProductCardFromButton(button)
 	if not card then
 		return nil, nil
@@ -148,8 +148,7 @@ local function ResolveProductSKU(button)
 
 	local cardName = card.Name
 
-	local explicitSku = button:GetAttribute("ProductSKU")
-		or card:GetAttribute("ProductSKU")
+	local explicitSku = button:GetAttribute("ProductSKU") or card:GetAttribute("ProductSKU")
 	if type(explicitSku) == "string" and _DevProductConfigBySKU[explicitSku] then
 		return explicitSku, card
 	end
@@ -160,22 +159,22 @@ local function ResolveProductSKU(button)
 		return mappedSku, card
 	end
 
-	local fromExactName = ResolveSkuByExactName(cardName)
+	local fromExactName = GetSkuByExactName(cardName)
 	if fromExactName then
 		return fromExactName, card
 	end
 
-	local fromNormalizedName = ResolveSkuByNormalizedName(cardName)
+	local fromNormalizedName = GetSkuByNormalizedName(cardName)
 	if fromNormalizedName then
 		return fromNormalizedName, card
 	end
 
-	local fromSpinHeuristic = ResolveSpinSkuFromName(cardName)
+	local fromSpinHeuristic = GetSpinSkuFromName(cardName)
 	if fromSpinHeuristic then
 		return fromSpinHeuristic, card
 	end
 
-	local fromCoinHeuristic = ResolveCoinSkuFromName(cardName)
+	local fromCoinHeuristic = GetCoinSkuFromName(cardName)
 	if fromCoinHeuristic then
 		return fromCoinHeuristic, card
 	end
@@ -190,7 +189,7 @@ local function SetButtonPriceLabel(button, text)
 	end
 end
 
-local function ResolveDisplayPriceForSku(sku, productInfo)
+local function GetDisplayPriceForSku(sku, productInfo)
 	local productType = MonetizationProducts:GetProductType(sku)
 	if productType == "DevProducts" then
 		local price = productInfo and productInfo.PriceInRobux
@@ -220,7 +219,7 @@ local function HookPurchase(button, sku)
 end
 
 local function RefreshSingleButton(button)
-	local sku = ResolveProductSKU(button)
+	local sku = GetProductSKU(button)
 	if not sku then
 		SetButtonPriceLabel(button, "?")
 		return
@@ -229,11 +228,13 @@ local function RefreshSingleButton(button)
 	SetButtonPriceLabel(button, "...")
 	HookPurchase(button, sku)
 
-	MonetizationController:GetProductInfoPromise(sku):andThen(function(productInfo)
-		SetButtonPriceLabel(button, ResolveDisplayPriceForSku(sku, productInfo))
-	end):catch(function()
-		SetButtonPriceLabel(button, ResolveDisplayPriceForSku(sku, nil))
-	end)
+	MonetizationController:GetProductInfoPromise(sku)
+		:andThen(function(productInfo)
+			SetButtonPriceLabel(button, GetDisplayPriceForSku(sku, productInfo))
+		end)
+		:catch(function()
+			SetButtonPriceLabel(button, GetDisplayPriceForSku(sku, nil))
+		end)
 end
 
 local function RefreshAllProductButtons()
