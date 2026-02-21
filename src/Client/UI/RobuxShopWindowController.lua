@@ -2,7 +2,9 @@
 	RobuxShopWindowController.lua
 
 	Description:
-		Builds the Robux shop window from config and prompts purchases via MonetizationController.
+		Updates Robux shop product prices from Marketplace data and wires purchase prompts.
+		Works with nested content groups (e.g. SPINS, CURRENCY) and product cards
+		that contain a RobuxButton with a PriceLabel.
 --]]
 
 -- Root --
@@ -17,106 +19,232 @@ local RobuxShopConfig = shared("RobuxShopConfig")
 -- Private Variables --
 local _ScreenGui = nil
 local _MainFrame = nil
-local _OffersContainer = nil
-local _OfferTemplate = nil
+local _Content = nil
 local _IsSetup = false
-local _OfferCards = {}
+local _ConnectedButtons = {}
+local _DevProductConfigBySKU = {}
 
 -- Internal Functions --
-local function SetText(target, text)
-	if not target then
+local function NormalizeKey(value)
+	if type(value) ~= "string" then
+		return ""
+	end
+	return string.lower((value:gsub("[^%w]", "")))
+end
+
+local function BuildDevProductSkuIndex()
+	_DevProductConfigBySKU = MonetizationProducts:GetAllProductConfigsOfType("DevProducts") or {}
+end
+
+local function FindPriceLabel(button)
+	local direct = button:FindFirstChild("PriceLabel")
+	if direct and (direct:IsA("TextLabel") or direct:IsA("TextButton")) then
+		return direct
+	end
+
+	local nested = button:FindFirstChild("PriceLabel", true)
+	if nested and (nested:IsA("TextLabel") or nested:IsA("TextButton")) then
+		return nested
+	end
+
+	return nil
+end
+
+local function FindProductCardFromButton(button)
+	local current = button.Parent
+	while current and current ~= _ScreenGui do
+		if current:IsA("GuiObject") and current.Name ~= "Content" and current.Name ~= "MainFrame" then
+			return current
+		end
+		current = current.Parent
+	end
+	return nil
+end
+
+local function ResolveSkuByExactName(name)
+	if type(name) ~= "string" or name == "" then
+		return nil
+	end
+	if _DevProductConfigBySKU[name] then
+		return name
+	end
+	return nil
+end
+
+local function ResolveSkuByNormalizedName(name)
+	local normalizedName = NormalizeKey(name)
+	if normalizedName == "" then
+		return nil
+	end
+
+	local matchedSku = nil
+	for sku, _ in pairs(_DevProductConfigBySKU) do
+		if NormalizeKey(sku) == normalizedName then
+			if matchedSku then
+				return nil
+			end
+			matchedSku = sku
+		end
+	end
+	return matchedSku
+end
+
+local function ResolveSpinSkuFromName(name)
+	local normalizedName = NormalizeKey(name)
+	if normalizedName == "" then
+		return nil
+	end
+
+	local spinCount = string.match(normalizedName, "spins?(%d+)")
+	if not spinCount then
+		return nil
+	end
+
+	local matchedSku = nil
+	local spinSuffix = "spin" .. spinCount
+	for sku, _ in pairs(_DevProductConfigBySKU) do
+		local normalizedSku = NormalizeKey(sku)
+		if normalizedSku:find(spinSuffix, 1, true) then
+			if matchedSku then
+				return nil
+			end
+			matchedSku = sku
+		end
+	end
+
+	return matchedSku
+end
+
+local function ResolveCoinSkuFromName(name)
+	local normalizedName = NormalizeKey(name)
+	if normalizedName == "" or (not normalizedName:find("coin", 1, true)) then
+		return nil
+	end
+
+	local packIndex = string.match(normalizedName, "coins?(%d+)")
+	if not packIndex then
+		return nil
+	end
+
+	local matchedSku = nil
+	for sku, _ in pairs(_DevProductConfigBySKU) do
+		local normalizedSku = NormalizeKey(sku)
+		local skuPackIndex = string.match(normalizedSku, "pack(%d+)")
+		if normalizedSku:find("coin", 1, true) and skuPackIndex == packIndex then
+			if matchedSku then
+				return nil
+			end
+			matchedSku = sku
+		end
+	end
+	return matchedSku
+end
+
+local function ResolveProductSKU(button)
+	local card = FindProductCardFromButton(button)
+	if not card then
+		return nil, nil
+	end
+
+	local cardName = card.Name
+
+	local explicitSku = button:GetAttribute("ProductSKU")
+		or card:GetAttribute("ProductSKU")
+	if type(explicitSku) == "string" and _DevProductConfigBySKU[explicitSku] then
+		return explicitSku, card
+	end
+
+	local uiMap = RobuxShopConfig.UIProductSKUByFrameName or {}
+	local mappedSku = uiMap[cardName]
+	if type(mappedSku) == "string" and _DevProductConfigBySKU[mappedSku] then
+		return mappedSku, card
+	end
+
+	local fromExactName = ResolveSkuByExactName(cardName)
+	if fromExactName then
+		return fromExactName, card
+	end
+
+	local fromNormalizedName = ResolveSkuByNormalizedName(cardName)
+	if fromNormalizedName then
+		return fromNormalizedName, card
+	end
+
+	local fromSpinHeuristic = ResolveSpinSkuFromName(cardName)
+	if fromSpinHeuristic then
+		return fromSpinHeuristic, card
+	end
+
+	local fromCoinHeuristic = ResolveCoinSkuFromName(cardName)
+	if fromCoinHeuristic then
+		return fromCoinHeuristic, card
+	end
+
+	return nil, card
+end
+
+local function SetButtonPriceLabel(button, text)
+	local priceLabel = FindPriceLabel(button)
+	if priceLabel then
+		priceLabel.Text = text
+	end
+end
+
+local function ResolveDisplayPriceForSku(sku, productInfo)
+	local productType = MonetizationProducts:GetProductType(sku)
+	if productType == "DevProducts" then
+		local price = productInfo and productInfo.PriceInRobux
+		if type(price) == "number" then
+			return tostring(price)
+		end
+	end
+
+	local fallbackConfig = MonetizationProducts:GetProductConfig(sku)
+	local fallbackCost = fallbackConfig and fallbackConfig.IdealRobuxCost
+	if type(fallbackCost) == "number" then
+		return tostring(fallbackCost)
+	end
+
+	return "?"
+end
+
+local function HookPurchase(button, sku)
+	if _ConnectedButtons[button] then
 		return
 	end
+	_ConnectedButtons[button] = true
 
-	if target:IsA("TextLabel") or target:IsA("TextButton") then
-		target.Text = text
-		return
-	end
-
-	local textLabel = target:FindFirstChild("TextLabel", true)
-	if textLabel and textLabel:IsA("TextLabel") then
-		textLabel.Text = text
-	end
-end
-
-local function ResolveProductFallbackPriceText(productSku)
-	local productConfig = MonetizationProducts:GetProductConfig(productSku)
-	if not productConfig then
-		return "R$?"
-	end
-
-	local idealCost = productConfig.IdealRobuxCost
-	if type(idealCost) ~= "number" then
-		return "R$?"
-	end
-
-	return "R$" .. tostring(idealCost)
-end
-
-local function SetOfferCardText(card, offer)
-	local titleLabel = card:FindFirstChild("OfferName", true) or card:FindFirstChild("DisplayName", true)
-	if titleLabel then
-		SetText(titleLabel, offer.DisplayName or offer.Id or "Offer")
-	end
-
-	local descLabel = card:FindFirstChild("OfferDescription", true) or card:FindFirstChild("Description", true)
-	if descLabel then
-		SetText(descLabel, offer.Description or "")
-	end
-
-	local rewardLabel = card:FindFirstChild("RewardText", true) or card:FindFirstChild("Reward", true)
-	if rewardLabel and offer.Reward and offer.Reward.Type == "Currency" then
-		SetText(rewardLabel, "+" .. tostring(offer.Reward.Amount) .. " " .. tostring(offer.Reward.CurrencyId))
-	end
-
-	local buyButton = card:FindFirstChild("BuyButton", true)
-	if buyButton and buyButton:IsA("GuiButton") then
-		SetText(buyButton, ResolveProductFallbackPriceText(offer.ProductSKU))
-	end
-end
-
-local function ResolveOffersContainer(mainFrame)
-	return mainFrame:FindFirstChild("Offers", true)
-		or mainFrame:FindFirstChild("OffersScroll", true)
-		or mainFrame:FindFirstChild("ShopItems", true)
-end
-
-local function ResolveOfferTemplate(offersContainer)
-	return offersContainer:FindFirstChild("_Template") or offersContainer:FindFirstChild("Template")
-end
-
-local function HookPurchaseButton(card, offer)
-	local buyButton = card:FindFirstChild("BuyButton", true)
-	if not buyButton or not buyButton:IsA("GuiButton") then
-		return
-	end
-
-	buyButton.MouseButton1Click:Connect(function()
-		MonetizationController:PromptPurchase(offer.ProductSKU)
+	button.MouseButton1Click:Connect(function()
+		MonetizationController:PromptPurchase(sku)
 	end)
 end
 
-local function PopulateOffers()
-	if not _OffersContainer or not _OfferTemplate then
+local function RefreshSingleButton(button)
+	local sku = ResolveProductSKU(button)
+	if not sku then
+		SetButtonPriceLabel(button, "?")
 		return
 	end
 
-	for _, card in ipairs(_OfferCards) do
-		card:Destroy()
+	SetButtonPriceLabel(button, "...")
+	HookPurchase(button, sku)
+
+	MonetizationController:GetProductInfoPromise(sku):andThen(function(productInfo)
+		SetButtonPriceLabel(button, ResolveDisplayPriceForSku(sku, productInfo))
+	end):catch(function()
+		SetButtonPriceLabel(button, ResolveDisplayPriceForSku(sku, nil))
+	end)
+end
+
+local function RefreshAllProductButtons()
+	if not _Content then
+		return
 	end
-	table.clear(_OfferCards)
 
-	for _, offer in ipairs(RobuxShopConfig.Offers or {}) do
-		local card = _OfferTemplate:Clone()
-		card.Name = offer.Id or offer.ProductSKU
-		card.Visible = true
-		card.LayoutOrder = offer.LayoutOrder or 1
-
-		SetOfferCardText(card, offer)
-		HookPurchaseButton(card, offer)
-
-		card.Parent = _OffersContainer
-		table.insert(_OfferCards, card)
+	for _, descendant in ipairs(_Content:GetDescendants()) do
+		if descendant:IsA("ImageButton") and descendant.Name == "RobuxButton" then
+			RefreshSingleButton(descendant)
+		end
 	end
 end
 
@@ -127,26 +255,15 @@ local function SetupUI(screenGui)
 
 	_ScreenGui = screenGui
 	_MainFrame = _ScreenGui:WaitForChild("MainFrame")
-	_OffersContainer = ResolveOffersContainer(_MainFrame)
+	_Content = _MainFrame:WaitForChild("Content")
 
-	if not _OffersContainer then
-		warn("[RobuxShopWindowController] Offers container not found under MainFrame")
-		return
-	end
-
-	_OfferTemplate = ResolveOfferTemplate(_OffersContainer)
-	if not _OfferTemplate then
-		warn("[RobuxShopWindowController] Offers template not found in offers container")
-		return
-	end
-
-	_OfferTemplate.Visible = false
+	BuildDevProductSkuIndex()
 	_IsSetup = true
 end
 
 -- API Functions --
 function RobuxShopWindowController:Refresh()
-	PopulateOffers()
+	RefreshAllProductButtons()
 end
 
 -- Initializers --
